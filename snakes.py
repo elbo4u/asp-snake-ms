@@ -178,6 +178,7 @@ class snakeC:  # snake class
         self.timegroundList = []
         self.timesolveList = []
         self.steps = 0
+        self.appleSteps = 0
         self.stepList = []
         self.mdList = []
         self.optimizeList = []
@@ -266,6 +267,8 @@ class snakeC:  # snake class
             else:
                 self.notgen = True
                 return
+            
+        self.appleSteps += 1
         while len(self.path) > 0 and self.apple != self.path[0] and self.apple is not None and len(self.snake)<self.n*self.m:
             self.snakevis.printsnake(self.snake, self.apple, self.path)
             if self.apple not in self.path:
@@ -277,12 +280,13 @@ class snakeC:  # snake class
                 #     if len(self.snake)==self.n*self.m:
                 #         break
 
-                if len(self.snake)<self.n*self.m:
+                # if len(self.snake)<self.n*self.m:s
                     self.boobytrap = len(self.snake)
                     print("SnakeBitItself", self.path[0], self.snake[:-1], flush=True)
                     break
             self.snake = [self.path[0]]+self.snake[:-1]
-            self.path=rotatepath(self.path)
+            self.path = rotatepath(self.path)
+            self.appleSteps += 1
             #print("rotate", path)
 
         self.snakevis.printsnake(self.snake, self.apple, self.path)
@@ -381,7 +385,7 @@ class ms_nogood(snakeC):
             super().handlesolve()
             if self.mixup == False or self.modelnr>1 or i>10:
                 if self.mixup == True and self.modelnr<2:
-                    print("CoundNotResolveMixup")
+                    print("CouldNotResolveMixup", len(self.snake))
                     #self.important.append(len(self.snake))
                 break
             self.mixup=False
@@ -525,41 +529,52 @@ class ms_preground(snakeC):
             if i == 1 and l==2:
                 #print("assign", predicate,[Number(xy[0]),Number(xy[1]),Number(l-i)], val)
                 self.ctl.assign_external(Function(predicate, [Number(xy[0]),Number(xy[1]),Number(l-i+2)]), val)
+                #print("   smaller", xy[0], xy[1], l-i+2, val)
             else:
                 if l-i-1>0:
                     #print("assign", predicate,[Number(xy[0]),Number(xy[1]),Number(l-i-1)], val)
                     self.ctl.assign_external(Function(predicate, [Number(xy[0]),Number(xy[1]),Number(l-i-1+2)]), val)
+                    #print("   smaller", xy[0], xy[1], l-i-1+2, val)
 
     def assignExtsSnake(self, snake, predicate = "snakeInv", val=True):
         l = len(snake) 
         for i,xy in enumerate(snake):
             #print("assign",predicate, [Number(xy[0]),Number(xy[1]),Number(l-i)],val)
             self.ctl.assign_external(Function(predicate, [Number(xy[0]),Number(xy[1]),Number(l-i)]), val)
+            #print("   snakeInv", xy[0], xy[1], l-i)
             
     def assignNextExts(self, snake, predicate = "nextext", val=True):
         for i in range(len(snake) - 1):
             tmp = snake[i+1] + snake[i] # reverse order
             #print("set", Function(predicate, list2Number(tmp)), val)
             self.ctl.assign_external(Function(predicate, list2Number(tmp)), val)
+            #print("   nextext", list2Number(tmp), val)
+
+    def assignHybrid(self, snake, predicate = "nextext", val=True):
+        for i in range(len(snake) - 1):
+            tmp = snake[i+1] + snake[i] + [len(snake)-(i+1)] # reverse order
+            #print("set", Function(predicate, list2Number(tmp)), val)
+            self.ctl.assign_external(Function(predicate, list2Number(tmp)), val)
+            #print("   nextextLen", list2Number(tmp), val)
         
 
     def presolve(self):
-        if strat[self.strategy] in [strat["shortcut"],strat["hybrid"]]:
+        if strat[self.strategy] in [strat["shortcut"]]:
             self.assignExts(self.snake, "smaller", True)
         if strat[self.strategy] == strat["hybrid"]:
         #    self.assignExtsSnake(self.snake, "snakeInv", True)
-            self.assignNextExts(self.snake, "nextext", True)
+            self.assignHybrid(self.snake, "nextext", True)
             self.assignExts(self.snake, "smaller", True)
         if strat[self.strategy] == strat["conservative"]:
             self.assignNextExts(self.snake, "nextext", True)
         super().presolve()
         
     def postsolve(self):
-        if strat[self.strategy] in [strat["shortcut"],strat["hybrid"]]:
+        if strat[self.strategy] in [strat["shortcut"]]:
             self.assignExts(self.snake, "smaller", False)
         if strat[self.strategy] == strat["hybrid"]:
             #self.assignExtsSnake(self.snake, "snakeInv", False)
-            self.assignNextExts(self.snake, "nextext", False)
+            self.assignHybrid(self.snake, "nextext", False)
             self.assignExts(self.snake, "smaller", False)
         if strat[self.strategy] == strat["conservative"]:
             self.assignNextExts(self.snake, "nextext", False)
@@ -755,6 +770,7 @@ example:   python snakes.py 8 8 redo hybrid 1
     print("timegroundList",mysnake.timegroundList)
     print("timesolveList",mysnake.timesolveList)
     print("steps", mysnake.steps, mysnake.md, float( mysnake.steps)/len(mysnake.snake), float( mysnake.md)/len(mysnake.snake), mysnake.m*mysnake.n/2)
+    print("applesteps", mysnake.appleSteps)
     print("ttotal", (timeit.default_timer() - tstart))
     print("tground", mysnake.timeground, mysnake.timegroundinit)
     print("tsolve", mysnake.timesolve)
