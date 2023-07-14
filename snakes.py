@@ -194,9 +194,11 @@ class snakeC:  # snake class
         self.boobytrap = 0
         self.tmpoptimize = []
         self.mixup = False
+        self.mixupResolved = ""
         self.seed = random.randint(0,999999)
         self.important = []
         self.notgen = False
+        self.timeout = False 
         self.ctllist = ["-c", "nn="+str(n),"-c", "mm="+str(m), "0", "--seed",str(self.seed) ,"--rand-freq",str(.01)]
 
         if not hasattr(self, 'name'):
@@ -323,9 +325,10 @@ class snakeC:  # snake class
 
     def handlesolve(self):
         with self.ctl.solve(assumptions = self.assume, async_=True, on_model = self.mymodel) as handle:
-            while not handle.wait(1): # check every 0.1 s if finished, can be set to 1s or 10s for larger timeouts
+            while not handle.wait(1): # check every sec if finished
                  if timeit.default_timer() - self.tic > self.to and self.to>0.0: # if timeout reached:
                     handle.cancel()
+                    self.timeout=True
                     print("timeout", len(self.snake), self.cost, flush=True)
                     break  
             if handle.get().exhausted and not handle.get().unsatisfiable:
@@ -372,7 +375,7 @@ class snakeC:  # snake class
 class ms_nogood(snakeC):
     def __init__(self,n,m,to,grafik,strategy):
         self.name = "ms_nogood"
-        self.initground = [("extApples",[]) , ("extHeads",[]), ("nogoodBase",[]), ("base",[])] #("redoBase",[])
+        self.initground = [("nogoodBase",[]), ("extApples",[]) , ("extHeads",[]),  ("base",[])] #("redoBase",[])
         #if strat[strategy] in [strat["shortcut"],strat["hybrid"]]:
         #    self.initground.append(("assume",[]))
         super().__init__( n,m,to,grafik,strategy)
@@ -381,14 +384,22 @@ class ms_nogood(snakeC):
 
     def handlesolve(self):
         i = 0
-        while True:
+        while not self.timeout:
             super().handlesolve()
-            if self.mixup == False or self.modelnr>1 or i>10:
+            if self.mixup == False or self.modelnr>1 or i>10 or self.timeout:
+                if self.timeout:
+                    self.mixupResolved += "t"
                 if self.mixup == True and self.modelnr<2:
                     print("CouldNotResolveMixup", len(self.snake))
                     #self.important.append(len(self.snake))
+                    self.mixupResolved += "!"
+                else:
+                    self.mixupResolved += "."
                 break
-            self.mixup=False
+            self.mixupResolved += "?"
+            print("MixupTryToFix", len(self.snake), i, self.mixupResolved)
+            self.mixup = False
+            self.ctl.ground([("ignore",[Number(random.randint(0,999999))])]) 
             i = i+1
 
 
@@ -443,6 +454,7 @@ class ms_nogood(snakeC):
             if not model.contains(Function("dummy",[])):
                 print("MIXUP dummy > 1",model.number, model.cost, len(self.snake))
                 self.mixup = True
+                self.mixupResolved += "x"
             else:
                 print("firstmodelfound", len(self.snake))
             #print(model.number, model.symbols(shown=True))
@@ -454,6 +466,7 @@ class ms_nogood(snakeC):
                 self.setnexts( model, self.snake, "next", True)
         else:
             if model.contains(Function("dummy",[])):
+                #self.mixupResolved += ":"
                 print("MIXUP 1, not dummy",model.number,model.cost,  len(self.snake))
             super().mymodel( model)
 
@@ -776,6 +789,8 @@ example:   python snakes.py 8 8 redo hybrid 1
     print("tsolve", mysnake.timesolve)
     print("modus", mysnake.name, mysnake.strategy)
     print("finished", n*m, len(mysnake.snake), mysnake.optimal+1)
+    if len(mysnake.mixupResolved) > 0:
+        print("mixupResolved", mysnake.mixupResolved)
     if len(mysnake.important)>0:
         print("important",mysnake.important )
     mysnake.snakevis.gengif()

@@ -125,6 +125,10 @@ snakeI(X,L-N+1) :- endidx(L), snake(X,N).
 
 {dummy}.
 
+#program ignore(t).
+
+ignore(t).
+
 
 
 % -------------------------------- MULTISHOT - MS --------------------------------
