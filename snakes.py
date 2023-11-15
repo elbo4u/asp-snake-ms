@@ -20,10 +20,10 @@ def list2Number(xy):
         l.append(Number(x))
     return l
 
-def apple2symbol(apple, predicate = "applefact"):
+def apple2symbol(apple, predicate = "applefact"):  # for grounding
     return (predicate,[Number(apple[0]),Number(apple[1])])
 
-def snake2symbol(snake, predicate = "snakefact"):
+def snake2symbol(snake, predicate = "snakefact"): # for grounding
     toground =[]
     for i,xy in enumerate(snake):
         toground.append((predicate,[Number(xy[0]),Number(xy[1]),Number(i+1)]))
@@ -306,6 +306,16 @@ class snakeC:  # snake class
                 self.notgen == False and \
                 self.unsat == [] 
 
+    def assignListBrackets(self, predicate, xy, val=True):
+        #print("assign", Function(predicate, list2Number(xy)), val)
+        #x = list2Number(xy)
+        self.ctl.assign_external(Function(predicate,  [Function("",list2Number(xy))]), val) #assign once
+
+    def assignListDoubleBrackets(self, predicate, xy1, xy2, val=True):
+        #print("assign", Function(predicate, list2Number(xy)), val)
+        #x = list2Number(xy)
+        self.ctl.assign_external(Function(predicate,  [Function("",list2Number(xy1)), Function("",list2Number(xy2))]), val) #assign once
+
     def assignList(self, predicate, xy, val=True):
         #print("assign", Function(predicate, list2Number(xy)), val)
         self.ctl.assign_external(Function(predicate, list2Number(xy)), val) #assign once
@@ -315,11 +325,11 @@ class snakeC:  # snake class
             self.assignList(predicate, x, val)
 
     def presolve(self):
-        self.assignList("apple", self.apple, True)
-        self.assignList("head", self.snake[0], True)
+        self.assignListBrackets("apple", self.apple, True)
+        #self.assignList("head", self.snake[0], True)
         #if strat[self.strategy] == strat["hybrid"] and not self.name.startswith("o"):
         #    self.assignLists("mark", self.snake, True)
-        self.assignList("head", self.snake[0], True)
+        self.assignListBrackets("head", self.snake[0], True)
         self.tic = timeit.default_timer()
         self.tmpoptimize = []
 
@@ -345,8 +355,8 @@ class snakeC:  # snake class
         print("apple", self.apple, self.n, self.m, self.cost)
         print("snake", self.snake)
         print("path", self.path, flush=True)
-        self.assignList("apple", self.apple, False)
-        self.assignList("head", self.snake[0], False)
+        self.assignListBrackets("apple", self.apple, False)
+        self.assignListBrackets("head", self.snake[0], False)
         #if strat[self.strategy] == strat["hybrid"] and not self.name.startswith("o"):
         #    self.assignLists("mark", self.snake, False)
         self.ctl.cleanup

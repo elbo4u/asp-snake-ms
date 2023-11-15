@@ -5,6 +5,7 @@
 pos(1..nn*mm).
 
 #defined dummy/0.
+#defined head/1.
 appleN(nn*mm+1):- dummy.
 
 field((X,Y)) :- X=1..nn, Y=1..mm.
@@ -14,7 +15,7 @@ connected((X1,Y),(X2,Y)) :- |X1-X2|=1, field((X1,Y)), field((X2,Y)).
 {next(X,Y):field(X), connected(X,Y)} = 1 :- field(Y), not dummy.
 {next(X,Y):field(Y), connected(X,Y)} = 1 :- field(X), not dummy.
 
-path((X,Y),1) :- field((X,Y)), head(X,Y), not dummy.  % start at head
+path(XY,1) :- field(XY), head(XY), not dummy.  % start at head
 path(F,N+1) :- path(S,N), next(S,F), pos(N+1), not dummy. % propagate values
 :- field(F), not path(F,_), not dummy.  % every path a field
 :- path(F1,N), path(F2,N), not F1=F2, not dummy. % not two fields same path
@@ -25,28 +26,28 @@ next(E,A) :- path(A,1), path(E,nn*mm), not dummy. % force cycle
 
 #minimize{N:appleN(N)}.
 
-appleN(N) :- apple(X,Y), path((X,Y),N), not dummy.
+appleN(N) :- apple((X,Y)), path((X,Y),N), not dummy.
 
 
 
 % -------------------------------- ONESHOT - OS --------------------------------
 
 #program applefact(x,y).
-apple(x,y).
+apple((x,y)).
 
 #program snakefact(x,y,t).
 snake((x,y),t).
 
 #program osShortcut().
 #defined snake/2.
-head(X,Y):- snake((X,Y),1).
+head(XY):- snake(XY,1).
 :- snake(X,1), snake(Y,2), next(X,Y). %no movement towards neck allowed
 end(X) :- snake(X,N), not snake(_,N+1).
 endidx(N) :- end(X), snake(X,N).
 :- snake(X,P), path(X,N), endidx(L), P-1+N<L+1, N>1. 
 
 #program osNaive().
-head(X,Y):- snake((X,Y),1).
+head(XY):- snake(XY,1).
 next(Y,X):- snake(X,N), snake(Y,N+1).
 
 #program markSnake().
@@ -60,10 +61,10 @@ snakeI(X,L-N+1) :- endidx(L), snake(X,N).
 
 
 #program extApples().
-#external apple(X,Y) : field((X,Y)).
+#external apple(XY) : field(XY).
 
 #program extHeads().
-#external head(X,Y) : field((X,Y)).
+#external head(XY) : field(XY).
 
 % -------------------------------- ms redo --------------------------------
 
@@ -113,8 +114,8 @@ snakeI(X,L-N+1) :- endidx(L), snake(X,N).
 
 
 #program assumeMark().
-   0 {snake(X,Y,S):pos(S)} 1 :- field((X,Y)).
-   :- not next((X,Y),(X1,Y1)), appleN(A), snake(X,Y,S), S>A-2, snake(X1,Y1,S+1), connected((X1,Y1),(X,Y)).
+   0 {snake(XY,S):pos(S)} 1 :- field(XY).
+   :- not next((X,Y),(X1,Y1)), appleN(A), snake((X,Y),S), S>A-2, snake((X1,Y1),S+1), connected((X1,Y1),(X,Y)).
 
 
 
