@@ -28,6 +28,9 @@ next(E,A) :- path(A,1), path(E,nn*mm), not dummy. % force cycle
 
 appleN(N) :- apple((X,Y)), path((X,Y),N), not dummy.
 
+#external heur(X,Y) : connected(X,Y).
+#heuristic next(X,Y): heur(X,Y). [ 1, sign]
+#heuristic next(X,Y): heur(X,Y). [ 5, init] % init bias
 
 
 % -------------------------------- ONESHOT - OS --------------------------------

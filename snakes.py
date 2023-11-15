@@ -9,7 +9,7 @@ from clingraph.graphviz import compute_graphs
 import matplotlib  # color snake
 from PIL import Image as PILImage
 import os
-
+import itertools
 
 
 
@@ -33,6 +33,13 @@ def snake2symbol(snake, predicate = "snakefact"): # for grounding
 def rotatepath(path):
     path.append(path[0]) # rotate once
     return path[1:]
+
+
+def pairwise(iterable):
+    # pairwise('ABCDEFG') --> AB BC CD DE EF FG
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return zip(a, b)
 
 strat = {
 			"conservative":1,
@@ -305,16 +312,25 @@ class snakeC:  # snake class
                 self.boobytrap == 0 and \
                 self.notgen == False and \
                 self.unsat == [] 
+    
+
+    def assignListDoubleBrackets(self, predicate, xy1, xy2, val=True):
+        #print("assign", Function(predicate, list2Number(xy)), val)
+        #x = list2Number(xy)
+        self.ctl.assign_external(Function(predicate,  [Function("",list2Number(xy1)), Function("",list2Number(xy2))]), val) 
+
+    def assignSnakeHeuristic(self, predicate, snake, val=True):
+        if len(snake)>1:
+            
+            for (x,y) in pairwise(snake+[snake[0]]):
+                self.assignListDoubleBrackets(predicate, x, y, val)
+
+
 
     def assignListBrackets(self, predicate, xy, val=True):
         #print("assign", Function(predicate, list2Number(xy)), val)
         #x = list2Number(xy)
         self.ctl.assign_external(Function(predicate,  [Function("",list2Number(xy))]), val) #assign once
-
-    def assignListDoubleBrackets(self, predicate, xy1, xy2, val=True):
-        #print("assign", Function(predicate, list2Number(xy)), val)
-        #x = list2Number(xy)
-        self.ctl.assign_external(Function(predicate,  [Function("",list2Number(xy1)), Function("",list2Number(xy2))]), val) #assign once
 
     def assignList(self, predicate, xy, val=True):
         #print("assign", Function(predicate, list2Number(xy)), val)
@@ -330,6 +346,7 @@ class snakeC:  # snake class
         #if strat[self.strategy] == strat["hybrid"] and not self.name.startswith("o"):
         #    self.assignLists("mark", self.snake, True)
         self.assignListBrackets("head", self.snake[0], True)
+        self.assignSnakeHeuristic("heur", self.snake, True)
         self.tic = timeit.default_timer()
         self.tmpoptimize = []
 
@@ -357,6 +374,7 @@ class snakeC:  # snake class
         print("path", self.path, flush=True)
         self.assignListBrackets("apple", self.apple, False)
         self.assignListBrackets("head", self.snake[0], False)
+        self.assignSnakeHeuristic("heur", self.snake, False)
         #if strat[self.strategy] == strat["hybrid"] and not self.name.startswith("o"):
         #    self.assignLists("mark", self.snake, False)
         self.ctl.cleanup
