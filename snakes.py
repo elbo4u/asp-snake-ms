@@ -118,7 +118,7 @@ class snakeviz: # class to handle graphics
         return [x for x in self.images+[self.current] if x is not None]
 
     def gengif(self):
-        if not self.grafik:
+        if  self.grafik==0:
             return
         images = []
         for filename in self.images:
@@ -128,7 +128,7 @@ class snakeviz: # class to handle graphics
 
 
     def printsnake(self, snake, apple, path, cost=0):
-        if not self.grafik:
+        if  self.grafik==0:
             return
         tmp = Control(["-c", "nn="+str(self.n),"-c", "mm="+str(self.m)])
         tmp.load("snakecolor.lp")
@@ -276,10 +276,13 @@ class snakeC:  # snake class
             else:
                 self.notgen = True
                 return
-            
+
+        init=True    
         self.appleSteps += 1
         while len(self.path) > 0 and self.apple != self.path[0] and self.apple is not None and len(self.snake)<self.n*self.m:
-            self.snakevis.printsnake(self.snake, self.apple, self.path)
+            if self.grafik == 1 or init:
+                self.snakevis.printsnake(self.snake, self.apple, self.path)
+                init = False
             if self.apple not in self.path:
                 #print("starvingSnake")
                 break
@@ -771,7 +774,7 @@ example:   python snakes.py 8 8 redo hybrid 1
     if len(sys.argv) > 2 and int(sys.argv[2])>1: m   =  int(sys.argv[2]) # m
     if len(sys.argv) > 3 and len(sys.argv[3])>0: approach  =  sys.argv[3][0].lower() # which method
     if len(sys.argv) > 4 and len(sys.argv[4])>0: strategy  =  sys.argv[4][0].lower() # which logic program
-    if len(sys.argv) > 5: grafik  =  int(sys.argv[5])>0 # draw pictures + animation
+    if len(sys.argv) > 5: grafik  =  int(sys.argv[5]) # draw pictures + animation
     if len(sys.argv) > 6: to  =  float(sys.argv[6]) # timeout
 
 
@@ -790,10 +793,12 @@ example:   python snakes.py 8 8 redo hybrid 1
     mysnake = classmap[approach](n,m,to,grafik,strategy)
     #n = ctl.get_const("n").number
 
+    mysnake.snakevis.printsnake(mysnake.snake,None,[])
     while mysnake.notend():
         mysnake.snakevis.printsnake(mysnake.snake,None,mysnake.path)
         mysnake.genapple()
-        mysnake.snakevis.printsnake(mysnake.snake,mysnake.apple,[])
+        if mysnake.grafik==1:
+            mysnake.snakevis.printsnake(mysnake.snake,mysnake.apple,[])
         if mysnake.apple is None:
             break
         if not mysnake.searchpath(): # solve wrapper
