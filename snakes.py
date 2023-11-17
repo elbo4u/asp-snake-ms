@@ -53,7 +53,20 @@ strat = {
 			"1":1,
 			"2":2,
 			"3":3,}
+
+def easyhc(n, m): # generate easy Hamiltonian cycle as start
+    result = []
     
+    flip = False
+    for j in range(1,m+1):
+        tmp = [(j, i+1) for i in range(1,n)]
+        if flip:
+            tmp.reverse()
+        flip = not flip
+        result.extend(tmp)
+    result.extend([( i,1) for i in range(n ,0,-1)])
+    return result
+
 class SnakeContext: # for grounding involving python
     def poss(self, x,y, scale=1):
         scale = float(str(scale).strip('"'))
@@ -204,9 +217,10 @@ class snakeC:  # snake class
         self.mixupResolved = ""
         self.seed = random.randint(0,999999)
         self.important = []
+        self.heurlist = []
         self.notgen = False
         self.timeout = False 
-        self.ctllist = ["-c", "nn="+str(n),"-c", "mm="+str(m), "0", "--seed",str(self.seed) ,"--rand-freq",str(.01)]
+        self.ctllist = ["-c", "nn="+str(n),"-c", "mm="+str(m), "0", "--seed",str(self.seed) ,"--rand-freq",str(.01), "--heuristic=Domain"]
 
         if not hasattr(self, 'name'):
             self.name = ""
@@ -231,6 +245,14 @@ class snakeC:  # snake class
         print("grafik", self.grafik)
         print("encoding", self.encoding)
         print("seed", self.seed, flush=True)
+
+
+
+
+        # for x in self.ctl.symbolic_atoms:
+        #     if x.is_external:
+        #        print(x.symbol)
+
         
 
     def genapple(self):
@@ -250,8 +272,11 @@ class snakeC:  # snake class
         self.cost = int(s[1:-1])-1
         self.tmpoptimize.append(self.cost)
         #print(model.number, model.symbols(shown=True))
+        if model.contains(Function("dummy",[])):
+            print("dummy", len(self.snake))
         print("solution", len(self.snake), self.cost, (timeit.default_timer() - self.tic)*1000, flush=True)
         self.path = [[0,0]]*(self.n*self.m)
+        #heurcount = 0
         for a in model.symbols(shown=True):
             if a.name == "path" and len(a.arguments) == 2:
                 i = a.arguments[1].number-1
@@ -259,8 +284,12 @@ class snakeC:  # snake class
                 x = xy.arguments[0].number
                 y = xy.arguments[1].number
                 self.path[i] = [x,y]
+        # for a in model.symbols(atoms=True):
+        #     if a.name == "heur" and len(a.arguments) == 2 and a.positive :
+        #         heurcount += 1
         self.path = rotatepath(self.path)
         self.solution = len(self.snake)
+        #print("heurcount", heurcount)
 
     def eatapple(self):
         #todo:fallback
@@ -320,13 +349,31 @@ class snakeC:  # snake class
     def assignListDoubleBrackets(self, predicate, xy1, xy2, val=True):
         #print("assign", Function(predicate, list2Number(xy)), val)
         #x = list2Number(xy)
-        self.ctl.assign_external(Function(predicate,  [Function("",list2Number(xy1)), Function("",list2Number(xy2))]), val) 
+        
+        #tmp1 = Function("",[Number(xy1[0]),Number(xy1[1])])
+        #tmp2 = Function("",[Number(xy2[0]),Number(xy2[1])])
+        #self.ctl.assign_external(Function(predicate, [tmp1,tmp2]), val) 
+        self.ctl.assign_external(Function(predicate,  [Function("",list2Number(xy1)), Function("",list2Number(xy2))]), val) #assign once
 
-    def assignSnakeHeuristic(self, predicate, snake, val=True):
-        if len(snake)>1:
-            
-            for (x,y) in pairwise(snake+[snake[0]]):
-                self.assignListDoubleBrackets(predicate, x, y, val)
+
+        #print(Function(predicate,  [Function("",list2Number(xy1)), Function("",list2Number(xy2))]), val)
+
+    def assignSnakeHeuristic(self, val):
+        if val == True:
+            if len(self.snake)>1:
+                path = self.path
+            else:
+                path = easyhc(self.n, self.m)
+            for (x,y) in pairwise(path+[path[0]]):
+                    self.assignListDoubleBrackets("heur", x, y, val)
+                    self.heurlist.append(( x, y))
+        if val == False:
+            for ( x, y) in self.heurlist:
+                self.assignListDoubleBrackets("heur", x, y, val)
+            self.heurlist = []
+
+                #maxDist = self.path.index(self.apple)+2
+                #self.ctl.assign_external(Function("maxdist",  [Number(maxDist)]), val) 
 
 
 
@@ -349,7 +396,7 @@ class snakeC:  # snake class
         #if strat[self.strategy] == strat["hybrid"] and not self.name.startswith("o"):
         #    self.assignLists("mark", self.snake, True)
         self.assignListBrackets("head", self.snake[0], True)
-        self.assignSnakeHeuristic("heur", self.snake, True)
+        self.assignSnakeHeuristic( True)
         self.tic = timeit.default_timer()
         self.tmpoptimize = []
 
@@ -377,7 +424,7 @@ class snakeC:  # snake class
         print("path", self.path, flush=True)
         self.assignListBrackets("apple", self.apple, False)
         self.assignListBrackets("head", self.snake[0], False)
-        self.assignSnakeHeuristic("heur", self.snake, False)
+        self.assignSnakeHeuristic(False)
         #if strat[self.strategy] == strat["hybrid"] and not self.name.startswith("o"):
         #    self.assignLists("mark", self.snake, False)
         self.ctl.cleanup
@@ -487,7 +534,7 @@ class ms_nogood(snakeC):
                 self.mixup = True
                 self.mixupResolved += "x"
             else:
-                print("firstmodelfound", len(self.snake))
+                print("dummy", len(self.snake))
             #print(model.number, model.symbols(shown=True))
             if strat[self.strategy] in [strat["shortcut"],strat["hybrid"]]:
                 self.setNoPath( model, self.snake, "path", True)
@@ -712,9 +759,11 @@ class oneshot(snakeC):
             toground.append(("markSnake",[]))
             toground.append(("osShortcut",[]))
 
+
         #print(self.strategy, strat[self.strategy], toground)
         self.tic = timeit.default_timer()
         self.ctl.ground(toground)
+        self.assignSnakeHeuristic( True)
         self.toc = timeit.default_timer()
         self.timeground += (self.toc - self.tic)
         print("ground", len(self.snake), self.timeground, (self.toc - self.tic))

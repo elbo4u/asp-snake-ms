@@ -4,34 +4,43 @@
 
 pos(1..nn*mm).
 
-#defined dummy/0.
+%#defined dummy/0.
 #defined head/1.
-appleN(nn*mm+1):- dummy.
+%appleN(nn*mm+1):- dummy.
+{dummy}.
 
 field((X,Y)) :- X=1..nn, Y=1..mm.
 connected((X,Y1),(X,Y2)) :- |Y1-Y2|=1, field((X,Y1)), field((X,Y2)).
 connected((X1,Y),(X2,Y)) :- |X1-X2|=1, field((X1,Y)), field((X2,Y)).
 
-{next(X,Y):field(X), connected(X,Y)} = 1 :- field(Y), not dummy.
-{next(X,Y):field(Y), connected(X,Y)} = 1 :- field(X), not dummy.
+{next(X,Y):field(X), connected(X,Y)} = 1 :- field(Y).
+{next(X,Y):field(Y), connected(X,Y)} = 1 :- field(X).
 
-path(XY,1) :- field(XY), head(XY), not dummy.  % start at head
-path(F,N+1) :- path(S,N), next(S,F), pos(N+1), not dummy. % propagate values
-:- field(F), not path(F,_), not dummy.  % every path a field
-:- path(F1,N), path(F2,N), not F1=F2, not dummy. % not two fields same path
-:- path(A,1), path(E,nn*mm), not connected(A,E), not dummy. % cycle
-next(E,A) :- path(A,1), path(E,nn*mm), not dummy. % force cycle
+path(XY,1) :- field(XY), head(XY).  % start at head
+path(F,N+1) :- path(S,N), next(S,F), pos(N+1). % propagate values
+:- field(F), not path(F,_).  % every path a field
+:- path(F1,N), path(F2,N), not F1=F2. % not two fields same path
+:- path(A,1), path(E,nn*mm), not connected(A,E). % cycle
+next(E,A) :- path(A,1), path(E,nn*mm). % force cycle
 
 #show path/2.
 
 #minimize{N:appleN(N)}.
 
-appleN(N) :- apple((X,Y)), path((X,Y),N), not dummy.
+appleN(N) :- apple((X,Y)), path((X,Y),N).
+
+
+
+%#heuristic next(X,Y): heur(X,Y), dummy. [ 10@2, true]
+#heuristic dummy. [ 99, true]
+next(X,Y) :- dummy, heur(X,Y).
+%#heuristic next(X,Y): connected(X,Y). [ 1@1, level]
 
 #external heur(X,Y) : connected(X,Y).
-%#external maxdist(N) : N = 1..nn*mm-1.
-#heuristic next(X,Y): heur(X,Y). [ 1, sign]
-#heuristic next(X,Y): heur(X,Y). [ 10, level] % init bias
+%#external maxdist(N) : N = 2..nn*mm.
+%#heuristic next(X,Y): heur(X,Y), maxdist(N), appleN(N). [ 10, true]
+%#heuristic appleN(N): maxdist(N). [ 1, sign]
+%#heuristic appleN(N): maxdist(N). [ 100, init]
 
 
 % -------------------------------- ONESHOT - OS --------------------------------

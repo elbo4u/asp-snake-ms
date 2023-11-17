@@ -17,9 +17,11 @@ path((x,y),t).
 next(S,F) :- path(S,N), path(F,N+1).
 next(E,A) :- path(A,1), path(E,nn*mm).
 
-edge((p(X),p(Y)), snake) :- next(X,Y).
-attr(edge, (p(X),p(Y)), penwidth, "4") :- next(X,Y).
-attr(edge, (p(X),p(Y)), color, "#555555") :- next(X,Y).
+edge((p(X),p(Y)), snake) :- next(Y,X).
+attr(edge, (p(X),p(Y)), penwidth, "4") :- next(Y,X).
+attr(edge, (p(X),p(Y)), color, "#555555") :- next(Y,X).
+attr(edge, (p(X),p(Y)), arrowhead, "inv") :- next(Y,X).
+attr(edge, (p(X),p(Y)), dir, "forward") :- next(Y,X).
 
 
 #program basecolor().
