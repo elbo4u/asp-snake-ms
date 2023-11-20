@@ -90,7 +90,7 @@ class SnakeContext: # for grounding involving python
         i = int(str(i))
         n = int(str(n))
         n = max(5,n)
-        x = 1.0-float(i-1)/float(n-1)
+        x = (1.0-float(i-1)/float(n-1))*0.5+0.3
         rgb =  matplotlib.colormaps['viridis'](x)
         s = '#%02x%02x%02x'+ a
         return String(s % tuple(int(255*x) for x in rgb[:3]))
@@ -99,10 +99,27 @@ class SnakeContext: # for grounding involving python
         i = int(str(i))
         n = int(str(n))
         n = max(5,n)
-        x = 1.0-float((float(i)+0.5)-1)/float(n-1)
+        x = (1.0-float((float(i)+0.5)-1)/float(n-1)) *0.5+0.3
         rgb =  matplotlib.colormaps['viridis'](x)
         s = '#%02x%02x%02x'+ a
         return String(s % tuple(int(255*x) for x in rgb[:3]))
+    
+    def sizeIN(self, i, n, oben="0.8", unten="0.2"):
+        i = int(str(i))
+        n = int(str(n))
+        oben = float(str(oben))
+        unten = float(str(unten))
+        n = max(5,n)
+        x = (1.0-float(i-1)/float(n-1))*(oben-unten) +unten
+        return String(str(x))
+    
+    def sizeINbetween(self, i, n, a="AA"):
+        i = int(str(i))
+        n = int(str(n))
+        n = max(5,n)
+        x = (1.0-float((float(i)+0.5)-1)/float(n-1))*0.6*0.8+0.2
+        return String(str(x))
+        
 
 class snakeviz: # class to handle graphics
     def find_lowest_non_folder_number(self, folder_path):
@@ -141,9 +158,38 @@ class snakeviz: # class to handle graphics
         #Image(filename="out/"+str(self.seed)+'animation.gif')
 
 
-    def printsnake(self, snake, apple, path, cost=0):
+    def printsnake(self, sn, app, pa, rotate=0, cost=0):
         if  self.grafik==0:
             return
+        snake = copy.deepcopy(sn)
+        path = copy.deepcopy(pa)
+        apple = copy.deepcopy(app)
+        
+        if rotate!=0:
+            if rotate[0]:
+                for i in range(len(snake)):
+                    snake[i][0] = self.n+1-snake[i][0]
+                for i in range(len(path)):
+                    path[i][0] = self.n+1-path[i][0]
+                if apple!=None:
+                    apple[0] = self.n+1-apple[0]
+
+            if rotate[1]:
+                for i in range(len(snake)):
+                    snake[i][1] = self.m+1-snake[i][1]
+                for i in range(len(path)):
+                    path[i][1] = self.m+1-path[i][1]                
+                if apple!=None:
+                    apple[1] = self.m+1-apple[1]
+
+            if rotate[2]:
+                for i in range(len(snake)):
+                    snake[i][0], snake[i][1] = snake[i][1], snake[i][0]
+                for i in range(len(path)):
+                    path[i][0], path[i][1] = path[i][1], path[i][0]
+                if apple!=None:
+                    apple[0], apple[1] = apple[1], apple[0]
+
         tmp = Control(["-c", "nn="+str(self.n),"-c", "mm="+str(self.m)])
         tmp.load("snakecolor.lp")
         toground = [("basecolor",[]) ]  
@@ -212,6 +258,8 @@ class snakeC:  # snake class
         self.encoding = "snake.lp"
         self.strategy = strategy
         self.rotate = rotate
+        if rotate != 0:
+            self.rotate = [0,0,0]
         self.assume = []
         self.boobytrap = 0
         self.tmpoptimize = []
@@ -312,7 +360,7 @@ class snakeC:  # snake class
         self.appleSteps += 1
         while len(self.path) > 0 and self.apple != self.path[0] and self.apple is not None and len(self.snake)<self.n*self.m:
             if self.grafik == 1 or init:
-                self.snakevis.printsnake(self.snake, self.apple, self.path)
+                self.snakevis.printsnake(self.snake, self.apple, self.path, self.rotate)
                 init = False
             if self.apple not in self.path:
                 #print("starvingSnake")
@@ -332,44 +380,42 @@ class snakeC:  # snake class
             self.appleSteps += 1
             #print("rotate", path)
 
-        self.snakevis.printsnake(self.snake, self.apple, self.path)
+        self.snakevis.printsnake(self.snake, self.apple, self.path, self.rotate)
         self.snakevis.nextiter()
         if len(self.path)>0 and not self.skip:
             self.snake = [self.path[0]]+self.snake
         self.skip = False
 
         #--------------mirror------------
-        if self.rotate>0:
+        if self.rotate!=0:
             snake =  copy.deepcopy(self.snake)
             path =  copy.deepcopy(self.path)
-            #print("-----",self.snake)
+            rotate = copy.deepcopy(self.rotate)
+            #print("-----",self.snake,self.rotate )
             if snake[0][0] > (self.n >> 1):
-                #print(1, end=" ")
+                rotate[0] = 1-rotate[0]
                 for i in range(len(snake)):
-                    #print( snake[i][0] , self.n+1-snake[i][0], end=" - ")
-                    x = self.n+1-snake[i][0]
-                    snake[i][0] = x
+                    snake[i][0] = self.n+1-snake[i][0]
                 for i in range(len(path)):
-                    x = self.n+1-path[i][0]
-                    path[i][0] = x
+                    path[i][0] = self.n+1-path[i][0]
 
             if snake[0][1] > (self.m >> 1):
-                #print(2, end=" ")
+                rotate[1] = 1-rotate[1]
                 for i in range(len(snake)):
-                    #print(snake[i][1] , self.m+1-snake[i][1], end=" - ")
                     snake[i][1] = self.m+1-snake[i][1]
                 for i in range(len(path)):
                     path[i][1] = self.m+1-path[i][1]
 
             if self.n==self.m and snake[0][0] > snake[0][1]:
-                #print(3, end=" ")
+                rotate[2] = 1-rotate[2]
                 for i in range(len(snake)):
                     snake[i][0], snake[i][1] = snake[i][1], snake[i][0]
                 for i in range(len(path)):
                     path[i][0], path[i][1] = path[i][1], path[i][0]
             self.snake =  copy.deepcopy(snake)
             self.path =  copy.deepcopy(path)
-            #print("\n-----",self.snake)
+            self.rotate =  copy.deepcopy(rotate)
+            #print("-----",self.snake,self.rotate)
 
             
 
@@ -897,12 +943,12 @@ example:   python snakes.py 8 8 redo hybrid 1
     mysnake = classmap[approach](n,m,to,grafik,strategy, rotate)
     #n = ctl.get_const("n").number
 
-    mysnake.snakevis.printsnake(mysnake.snake,None,[])
+    #mysnake.snakevis.printsnake(mysnake.snake,None,[])
     while mysnake.notend():
-        mysnake.snakevis.printsnake(mysnake.snake,None,mysnake.path)
+        mysnake.snakevis.printsnake(mysnake.snake,None,mysnake.path, mysnake.rotate)
         mysnake.genapple()
         if mysnake.grafik==1:
-            mysnake.snakevis.printsnake(mysnake.snake,mysnake.apple,[])
+            mysnake.snakevis.printsnake(mysnake.snake,mysnake.apple, [], mysnake.rotate)
         if mysnake.apple is None:
             break
         if not mysnake.searchpath(): # solve wrapper

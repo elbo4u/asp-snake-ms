@@ -82,6 +82,7 @@ snakeI(X,L-N+1) :- endidx(L), snake(X,N).
 #program extHeadsMirror().
 #external head((X,Y)) : field((X,Y)), X<=Y, X*2<=nn, Y*2<=mm, mm=nn.
 #external head((X,Y)) : field((X,Y)),  X*2<=nn, Y*2<=mm, not mm=nn.
+%#external head((X,Y)) : field((X,Y)), X*2<=nn, Y*2<=mm.
 
 % -------------------------------- ms redo --------------------------------
 
