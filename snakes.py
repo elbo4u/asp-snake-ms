@@ -10,6 +10,7 @@ import matplotlib  # color snake
 from PIL import Image as PILImage
 import os
 import itertools
+import copy
 
 
 
@@ -182,7 +183,7 @@ class snakeviz: # class to handle graphics
 
 
 class snakeC:  # snake class
-    def __init__(self,n,m,to,grafik,strategy):
+    def __init__(self,n,m,to,grafik,strategy, rotate):
         self.n = n
         self.m = m
         self.to = to # timeout
@@ -210,6 +211,7 @@ class snakeC:  # snake class
         self.skip = False
         self.encoding = "snake.lp"
         self.strategy = strategy
+        self.rotate = rotate
         self.assume = []
         self.boobytrap = 0
         self.tmpoptimize = []
@@ -289,7 +291,7 @@ class snakeC:  # snake class
         #         heurcount += 1
         self.path = rotatepath(self.path)
         self.solution = len(self.snake)
-        #print("heurcount", heurcount)
+        #print("model#", model.number)
 
     def eatapple(self):
         #todo:fallback
@@ -335,6 +337,41 @@ class snakeC:  # snake class
         if len(self.path)>0 and not self.skip:
             self.snake = [self.path[0]]+self.snake
         self.skip = False
+
+        #--------------mirror------------
+        if self.rotate>0:
+            snake =  copy.deepcopy(self.snake)
+            path =  copy.deepcopy(self.path)
+            #print("-----",self.snake)
+            if snake[0][0] > (self.n >> 1):
+                #print(1, end=" ")
+                for i in range(len(snake)):
+                    #print( snake[i][0] , self.n+1-snake[i][0], end=" - ")
+                    x = self.n+1-snake[i][0]
+                    snake[i][0] = x
+                for i in range(len(path)):
+                    x = self.n+1-path[i][0]
+                    path[i][0] = x
+
+            if snake[0][1] > (self.m >> 1):
+                #print(2, end=" ")
+                for i in range(len(snake)):
+                    #print(snake[i][1] , self.m+1-snake[i][1], end=" - ")
+                    snake[i][1] = self.m+1-snake[i][1]
+                for i in range(len(path)):
+                    path[i][1] = self.m+1-path[i][1]
+
+            if self.n==self.m and snake[0][0] > snake[0][1]:
+                #print(3, end=" ")
+                for i in range(len(snake)):
+                    snake[i][0], snake[i][1] = snake[i][1], snake[i][0]
+                for i in range(len(path)):
+                    path[i][0], path[i][1] = path[i][1], path[i][0]
+            self.snake =  copy.deepcopy(snake)
+            self.path =  copy.deepcopy(path)
+            #print("\n-----",self.snake)
+
+            
 
 
     def notend(self):
@@ -409,7 +446,7 @@ class snakeC:  # snake class
                     print("timeout", len(self.snake), self.cost, flush=True)
                     break  
             if handle.get().exhausted and not handle.get().unsatisfiable:
-                print("optimum", len(self.snake), self.cost, flush=True)
+                print("optimum", len(self.snake), self.cost, (timeit.default_timer() - self.tic)*1000, flush=True)
                 if self.optimal == len(self.snake)-1:
                     self.optimal += 1
             if handle.get().unsatisfiable == True and len(self.snake)+1 < self.n*self.m:
@@ -451,12 +488,14 @@ class snakeC:  # snake class
 
     
 class ms_nogood(snakeC):
-    def __init__(self,n,m,to,grafik,strategy):
+    def __init__(self,n,m,to,grafik,strategy, rotate):
         self.name = "ms_nogood"
-        self.initground = [("nogoodBase",[]), ("extApples",[]) , ("extHeads",[]),  ("base",[])] #("redoBase",[])
+        self.initground = [("nogoodBase",[]), ("extApples",[]) , ("extHeadsMirror",[]),  ("base",[])] #("redoBase",[])
+        if rotate==0:
+            self.initground.append(("extHeads",[])) 
         #if strat[strategy] in [strat["shortcut"],strat["hybrid"]]:
         #    self.initground.append(("assume",[]))
-        super().__init__( n,m,to,grafik,strategy)
+        super().__init__( n,m,to,grafik,strategy, rotate)
 
 
 
@@ -549,13 +588,15 @@ class ms_nogood(snakeC):
             super().mymodel( model)
 
 class ms_assume(snakeC):
-    def __init__(self,n,m,to,grafik,strategy):
+    def __init__(self,n,m,to,grafik,strategy, rotate):
         self.name = "ms_assume"
-        self.initground = [("extApples",[]) , ("extHeads",[]), ("base",[]), ("assume",[]) ]
+        self.initground = [("extApples",[]) , ("extHeadsMirror",[]), ("base",[]), ("assume",[]) ]
+        if rotate==0:
+            self.initground.append(("extHeads",[])) 
         if strat[strategy] == strat["hybrid"]:
             self.initground.append(("assumeMark",[]))
 
-        super().__init__( n,m,to,grafik,strategy)
+        super().__init__( n,m,to,grafik,strategy, rotate)
 
     def assumeSmaller(self, snake, predicate = "smaller", val=True):
         assumption = []
@@ -600,9 +641,11 @@ class ms_assume(snakeC):
         super().presolve()
 
 class ms_preground(snakeC):
-    def __init__(self,n,m,to,grafik,strategy):
+    def __init__(self,n,m,to,grafik,strategy, rotate):
         self.name = "ms_preground"
-        self.initground = [("extApples",[]) , ("extHeads",[]), ("base",[]) ] 
+        self.initground = [("extApples",[]) , ("extHeadsMirror",[]), ("base",[]) ] 
+        if rotate==0:
+            self.initground.append(("extHeads",[])) 
         if strat[strategy] == strat["shortcut"]:
             self.initground.append(("consPre",[]))
         if strat[strategy] == strat["hybrid"]:
@@ -610,7 +653,7 @@ class ms_preground(snakeC):
             self.initground.append(("consHybrid",[]))
         if strat[strategy] == strat["conservative"]:
             self.initground.append(("consNaive",[]))
-        super().__init__( n,m,to,grafik,strategy)
+        super().__init__( n,m,to,grafik,strategy, rotate)
 
     def assignExts(self, snake, predicate = "smaller", val=True):
         l = len(snake) 
@@ -672,10 +715,12 @@ class ms_preground(snakeC):
         super().postsolve()
         
 class ms_redo(snakeC):
-    def __init__(self,n,m,to,grafik,strategy):
+    def __init__(self,n,m,to,grafik,strategy, rotate):
         self.name = "ms_redo"
-        self.initground = [("extApples",[]) , ("extHeads",[]), ("base",[]) ] 
-        super().__init__( n,m,to,grafik,strategy)
+        self.initground = [("extApples",[]) , ("extHeadsMirror",[]), ("base",[]) ] 
+        if rotate==0:
+            self.initground.append(("extHeads",[])) 
+        super().__init__( n,m,to,grafik,strategy, rotate)
 
     def snake2cons(self, snake, predicate = "consRedo"):
         toground =[]
@@ -738,10 +783,10 @@ class ms_redo(snakeC):
         super().postsolve()
 
 class oneshot(snakeC):
-    def __init__(self,n,m,to,grafik,strategy):
+    def __init__(self,n,m,to,grafik,strategy, rotate):
         self.name = "oneshot"
         self.initground = []  
-        super().__init__( n,m,to,grafik,strategy)
+        super().__init__( n,m,to,grafik,strategy, rotate)
 
 
     def presolve(self):
@@ -803,6 +848,7 @@ def main():
     grafik = False
     approach = "redo"
     strategy = "conservative" # conservative, shortcut, hybrid
+    rotate = 0
     printhelp = f"""
 Script to let the computer play snakes! in clingo! using python! and multi-shot!
 How to use this script:
@@ -817,7 +863,15 @@ example:   python snakes.py 8 8 redo hybrid 1
         
     if len(sys.argv) == 1 or  len(sys.argv) > 1 and sys.argv[1] in ["h", "-h", "--h", "--help"] :
         print(printhelp)
-        return
+        #return
+        n   =  6 # n
+        m   =  6 # m
+        approach  =  "1" # which method
+        strategy  =  "1" # which logic program
+        grafik  =  0 # draw pictures + animation
+        to  =  5 # timeout
+        rotate  =  1 # draw pictures + animation
+
 
     if len(sys.argv) > 1 and int(sys.argv[1])>1: n   =  int(sys.argv[1]) # n
     if len(sys.argv) > 2 and int(sys.argv[2])>1: m   =  int(sys.argv[2]) # m
@@ -825,6 +879,7 @@ example:   python snakes.py 8 8 redo hybrid 1
     if len(sys.argv) > 4 and len(sys.argv[4])>0: strategy  =  sys.argv[4][0].lower() # which logic program
     if len(sys.argv) > 5: grafik  =  int(sys.argv[5]) # draw pictures + animation
     if len(sys.argv) > 6: to  =  float(sys.argv[6]) # timeout
+    if len(sys.argv) > 7: rotate  =  int(sys.argv[7]) # draw pictures + animation
 
 
     if approach not in classmap:
@@ -839,7 +894,7 @@ example:   python snakes.py 8 8 redo hybrid 1
         if strat[strategy] == strat[s]: 
             strategy=s
     
-    mysnake = classmap[approach](n,m,to,grafik,strategy)
+    mysnake = classmap[approach](n,m,to,grafik,strategy, rotate)
     #n = ctl.get_const("n").number
 
     mysnake.snakevis.printsnake(mysnake.snake,None,[])
