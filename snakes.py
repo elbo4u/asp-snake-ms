@@ -652,18 +652,29 @@ class ms_assume(snakeC):
                 continue
             if i == 1 and l==2:
                 #print("assume", predicate,[Number(xy[0]),Number(xy[1]),Number(l-i)], val)
-                assumption.append((Function(predicate, [Number(xy[0]),Number(xy[1]),Number(l-i+2)]), val))
+                assumption.append((
+                    Function(predicate, [
+                             Function("",[Number(xy[0]),Number(xy[1])]),
+                             Number(l-i+2)
+                             ]), val))
             else:
                 if l-i-1>0:
                     #print("assign", predicate,[Number(xy[0]),Number(xy[1]),Number(l-i-1)], val)
-                    assumption.append((Function(predicate, [Number(xy[0]),Number(xy[1]),Number(l-i-1+2)]), val))
+                    assumption.append((
+                        Function(predicate, [
+                                 Function("",[Number(xy[0]),Number(xy[1])]),
+                                 Number(l-i-1+2)
+                                 ]), val))
         return assumption
     
     def assumeSnake(self, snake, predicate = "snake", val=True):
         assumption = []
         l = len(snake) 
         for i,xy in enumerate(snake):
-            assumption.append((Function(predicate, [Number(xy[0]),Number(xy[1]),Number(l-i)]), val))
+            assumption.append((Function(predicate, [
+                Function("",[Number(xy[0]),Number(xy[1])]),
+                Number(l-i)
+                ]), val))
         return assumption
     
     def assumeNext(self, snake, predicate = "next", val=True):
@@ -708,12 +719,20 @@ class ms_preground(snakeC):
                 continue
             if i == 1 and l==2:
                 #print("assign", predicate,[Number(xy[0]),Number(xy[1]),Number(l-i)], val)
-                self.ctl.assign_external(Function(predicate, [Number(xy[0]),Number(xy[1]),Number(l-i+2)]), val)
+                self.ctl.assign_external(
+                    Function(predicate, [
+                        Function("", [Number(xy[0]) , Number(xy[1])]),
+                        Number(l-i+2)
+                        ]), val)
                 #print("   smaller", xy[0], xy[1], l-i+2, val)
             else:
                 if l-i-1>0:
                     #print("assign", predicate,[Number(xy[0]),Number(xy[1]),Number(l-i-1)], val)
-                    self.ctl.assign_external(Function(predicate, [Number(xy[0]),Number(xy[1]),Number(l-i-1+2)]), val)
+                    self.ctl.assign_external(
+                        Function(predicate, [
+                            Function("",[Number(xy[0]),Number(xy[1])]),
+                            Number(l-i-1+2)
+                            ]), val)
                     #print("   smaller", xy[0], xy[1], l-i-1+2, val)
 
     def assignExtsSnake(self, snake, predicate = "snakeInv", val=True):

@@ -118,8 +118,8 @@ snakeI(X,L-N+1) :- endidx(L), snake(X,N).
     
 
 #program consPre().
-    #external smaller(X,Y,S) : field((X,Y)), S=2..(nn*mm-1).
-    :- path((X,Y),N), N < S, field((X,Y)), smaller(X,Y,S).
+    #external smaller(XY,S) : field(XY), S=2..(nn*mm-1).
+    :- path(XY,N), N < S, field(XY), smaller(XY,S).
 
 
 
@@ -128,12 +128,12 @@ snakeI(X,L-N+1) :- endidx(L), snake(X,N).
 % -------------------------------- ms assume --------------------------------
 
 #program assume(). 
-    smaller(X,Y,S) :- path((X,Y),N), N < S, field((X,Y)), pos(S).
+    smaller(XY,S) :- path(XY,N), N < S, field(XY), pos(S).
 
 
 #program assumeMark().
    0 {snake(XY,S):pos(S)} 1 :- field(XY).
-   :- not next((X,Y),(X1,Y1)), appleN(A), snake((X,Y),S), S>A-2, snake((X1,Y1),S+1), connected((X1,Y1),(X,Y)).
+   :- not next(XY,XY1), appleN(A), snake(XY,S), S>A-2, snake(XY1,S+1), connected(XY1,XY).
 
 
 
