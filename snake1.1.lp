@@ -1,0 +1,157 @@
+#const nn=6.
+#const mm=6.
+
+
+pos(1..nn*mm).
+
+#defined head/1.
+{dummy}.
+
+field((X,Y)) :- X=1..nn, Y=1..mm.
+connected((X,Y1),(X,Y2)) :- |Y1-Y2|=1, field((X,Y1)), field((X,Y2)).
+connected((X1,Y),(X2,Y)) :- |X1-X2|=1, field((X1,Y)), field((X2,Y)).
+
+{next(X,Y):field(X), connected(X,Y)} = 1 :- field(Y).
+{next(X,Y):field(Y), connected(X,Y)} = 1 :- field(X).
+
+path((1,1),1).  % start at head
+path(F,N+1) :- path(S,N), next(S,F), pos(N+1). % propagate values
+:- field(F), not path(F,_).  % every path a field
+:- path(F1,N), path(F2,N), not F1=F2. % not two fields same path
+:- path(A,1), path(E,nn*mm), not connected(A,E). % cycle
+next(E,A) :- path(A,1), path(E,nn*mm). % force cycle
+
+#show path/2.
+
+#minimize{A: offset(A)}.
+
+appleN(N) :- apple(XY), path(XY,N).
+headN(N) :- head(XY), path(XY,N).
+offset(nn*mm-H+A) :- appleN(A), headN(H), A<H.
+offset(A-H) :- appleN(A), headN(H), A>H.
+
+% dist1(|A-H|) :- apple((A,_)), head((H,_)).
+% dist2(|A-H|) :- apple((_,A)), head((_,H)).
+% :- dist1(D1), dist2(D2), D1+D2>offset.
+
+#heuristic dummy. [ 99, true]
+next(X,Y) :- dummy, heur(X,Y).
+
+#external heur(X,Y) : connected(X,Y).
+
+
+%mod(X, X-nn*mm):- X= nn*mm+1..2*nn*mm.
+%mod(X, X):- X= 1..nn*mm.
+%mod(X, X+nn*mm):- X= 1-nn*mm..0.
+
+% -------------------------------- ONESHOT - OS --------------------------------
+
+#program applefact(x,y).
+apple((x,y)).
+
+#program snakefact(x,y,t).
+snake((x,y),t).
+
+#program osShortcut().
+#defined snake/2.
+head(XY):- snake(XY,1).
+:- snake(X,1), snake(Y,2), next(X,Y). %no movement towards neck allowed
+end(X) :- snake(X,N), not snake(_,N+1).
+endidx(N) :- end(X), snake(X,N).
+:- snake(X,P), path(X,N), endidx(L), P-1+N<L+1, N>1. 
+
+#program osNaive().
+head(XY):- snake(XY,1).
+next(Y,X):- snake(X,N), snake(Y,N+1).
+
+#program markSnake().
+snakeI(X,L-N+1) :- endidx(L), snake(X,N).
+
+:- not next(X,Y), appleN(A), snakeI(X,S), S>A-2, snakeI(Y,S+1).
+
+
+% -------------------------------- MULTISHOT - MS --------------------------------
+
+
+
+#program extApples().
+#external apple(XY) : field(XY).
+
+#program extHeads().
+#external head((X,Y)) : field((X,Y)).
+
+#program extHeadsMirror().
+#external head((X,Y)) : field((X,Y)), X<=Y, X*2<=nn, Y*2<=mm, mm=nn.
+#external head((X,Y)) : field((X,Y)),  X*2<=nn, Y*2<=mm, not mm=nn.
+%#external head((X,Y)) : field((X,Y)), X*2<=nn, Y*2<=mm.
+
+% -------------------------------- ms redo --------------------------------
+
+
+#program extRedo(num). 
+    #external redo(num).
+
+#program consRedo(x,y,s,num).
+    :- redo(num), path((x,y),N), N < s.
+
+#program redoNaive(x1,y1,x2,y2, num).
+    :- redo(num), not next((x1,y1),(x2,y2)). 
+
+
+#program redoHybrid(x1,y1,x2,y2,s,num).
+    :- not next((x1,y1),(x2,y2)), appleN(A), s>A-2, redo(num).
+
+% -------------------------------- ms preground --------------------------------
+
+#program consNaive().
+    #external nextext(X1,Y1,X2,Y2) : connected((X1,Y1),(X2,Y2)).
+    :- nextext(X1,Y1,X2,Y2), not next((X1,Y1),(X2,Y2)).
+
+#program consHybrid().
+    #external nextext(X1,Y1,X2,Y2,L) : connected((X1,Y1),(X2,Y2)), L = 0..nn*mm-2.
+    %:- appleN(A), path((X1,Y1),S),  nn*mm-L-1<S-A, nextext(X1,Y1,X2,Y2,L), not next((X1,Y1),(X2,Y2)).
+
+    %:- appleN(A), s>A-2, redo(num), not next((x1,y1),(x2,y2)).
+    :- appleN(A),  A<LS, nextext(X1,Y1,X2,Y2, LS+3), not next((X1,Y1),(X2,Y2)).
+
+    %#external smaller(X,Y,S) : field((X,Y)), S=2..(nn*mm-1).
+    %:- appleN(A), S<A-3, path((X,Y),N), N < S, field((X,Y)), smaller(X,Y,S).
+    
+
+#program consPre().
+    #external smaller(XY,S) : field(XY), S=2..(nn*mm-1).
+    :- path(XY,N), N < S, field(XY), smaller(XY,S).
+
+
+
+
+
+% -------------------------------- ms assume --------------------------------
+
+#program assume(). 
+    smaller(XY,S) :- path(XY,N), N < S, field(XY), pos(S).
+
+
+#program assumeMark().
+   0 {snake(XY,S):pos(S)} 1 :- field(XY).
+   :- not next(XY,XY1), appleN(A), snake(XY,S), S>A-2, snake(XY1,S+1), connected(XY1,XY).
+
+
+
+
+% -------------------------------- ms nogood --------------------------------
+
+#program nogoodBase().
+
+{dummy}.
+
+#program ignore(t).
+
+ignore(t).
+
+
+
+% -------------------------------- MULTISHOT - MS --------------------------------
+
+
+
