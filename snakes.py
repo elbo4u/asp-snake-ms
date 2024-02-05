@@ -656,10 +656,10 @@ class ms_nogood(snakeC):
 
     def setnexts(self, model, snake, predicate = "apath", val=True): # conservative
         for x in snake[1:]:
-            print(x)
+            #print(x)
             tmp = Function("",[Number(x[0]),Number(x[1])  ])
-            print(tmp)
-            print([(Function(predicate, [tmp]), val)])
+            #print(tmp)
+            #print([(Function(predicate, [tmp]), val)])
             model.context.add_nogood( [(Function(predicate, [tmp]), val)])
             #print("CHECK",len(snake),str([(Function(predicate, [tmp]), val)]))
 
@@ -670,8 +670,8 @@ class ms_nogood(snakeC):
                 print("MIXUP dummy > 1",model.number, model.cost, len(self.snake))
                 self.mixup = True
                 self.mixupResolved += "x"
-            else:
-                print("dummy", len(self.snake))
+            #else:
+            #    print("dummy", len(self.snake))
             #print(model.number, model.symbols(shown=True))
             if strat[self.strategy] in [strat["shortcut"],strat["hybrid"]]:
                 self.setNoPath( model, self.snake, "path", True)
@@ -680,12 +680,12 @@ class ms_nogood(snakeC):
             if strat[self.strategy] == strat["conservative"]:
                 #print("ENTER")
                 #self.setnexts( model, self.snake, "next", True)
-                self.setnexts( model, self.snake, "apath", True)
+                self.setnextsOri( model, self.snake, "next", True)
         else:
             if model.contains(Function("dummy",[])):
                 #self.mixupResolved += ":"
                 print("MIXUP 1, not dummy",model.number,model.cost,  len(self.snake))
-            super().mymodel( model)
+        super().mymodel( model)
 
 class ms_assume(snakeC):
     def __init__(self,n,m,to,grafik,strategy, rotate):
@@ -816,12 +816,21 @@ class ms_preground(snakeC):
             self.ctl.assign_external(Function(predicate, [Number(xy[0]),Number(xy[1]),Number(l-i)]), val)
             #print("   snakeInv", xy[0], xy[1], l-i)
             
-    def assignNextExts(self, snake, predicate = "nextext", val=True):
+    def assignNextExtsOld(self, snake, predicate = "nextext", val=True):
         for i in range(len(snake) - 1):
             tmp = snake[i+1] + snake[i] # reverse order
             #print("set", Function(predicate, list2Number(tmp)), val)
             self.ctl.assign_external(Function(predicate, list2Number(tmp)), val)
-            #print("   nextext", list2Number(tmp), val)
+            #print("   ", predicate, list2Number(tmp), val)
+
+    def assignNextExts(self, snake, predicate = "nextext", val=True):
+        for i in range(len(snake) - 1):
+            tmp =  list2Number(snake[i+1] + snake[i])   # reverse order 
+            tmp1 = Function("",[tmp[0],tmp[1]])
+            tmp2 = Function("",[tmp[2],tmp[3]])
+            #print("set", Function(predicate, list2Number(tmp)), val)
+            self.ctl.assign_external(Function(predicate, [tmp1,tmp2]), val)
+            #print("   ", predicate, Function(predicate, [tmp1,tmp2]), val)
 
     def assignNextSnake(self, snake, predicate = "snake", val=True):
         for x in snake[1:]:
@@ -846,7 +855,8 @@ class ms_preground(snakeC):
             self.assignHybrid(self.snake, "nextext", True)
             self.assignExts(self.snake, "smaller", True)
         if strat[self.strategy] == strat["conservative"]:
-            self.assignNextSnake(self.snake, "snake", True)
+            #self.assignNextSnake(self.snake, "snake", True)
+            self.assignNextExts(self.snake, "prenext", True)
         super().presolve()
         
     def postsolve(self):
@@ -857,7 +867,8 @@ class ms_preground(snakeC):
             self.assignHybrid(self.snake, "nextext", False)
             self.assignExts(self.snake, "smaller", False)
         if strat[self.strategy] == strat["conservative"]:
-            self.assignNextSnake(self.snake, "snake", False)
+            #self.assignNextSnake(self.snake, "snake", False)
+            self.assignNextExts(self.snake, "prenext", False)
         super().postsolve()
         
 class ms_redo(snakeC):

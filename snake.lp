@@ -103,8 +103,8 @@ snakeI(X,L-N+1) :- endidx(L), snake(X,N).
 % -------------------------------- ms preground --------------------------------
 
 #program consNaive().
-    #external snake(XY) : field(XY).
-    :- snake(XY), field(XY), apath(XY).
+    #external prenext(X,Y) : connected(X,Y).
+    :- prenext(X,Y), not next(X,Y), connected(X,Y).
 
 #program consHybrid().
     #external nextext(X1,Y1,X2,Y2,L) : connected((X1,Y1),(X2,Y2)), L = 0..nn*mm-2.
