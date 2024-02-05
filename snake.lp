@@ -16,18 +16,18 @@ connected((X1,Y),(X2,Y)) :- |X1-X2|=1, field((X1,Y)), field((X2,Y)).
 {next(X,Y):field(X), connected(X,Y)} = 1 :- field(Y).
 {next(X,Y):field(Y), connected(X,Y)} = 1 :- field(X).
 
-path(XY,1) :- field(XY), head(XY).  % start at head
-path(F,N+1) :- path(S,N), next(S,F), pos(N+1). % propagate values
-:- field(F), not path(F,_).  % every path a field
-:- path(F1,N), path(F2,N), not F1=F2. % not two fields same path
-:- path(A,1), path(E,nn*mm), not connected(A,E). % cycle
-next(E,A) :- path(A,1), path(E,nn*mm). % force cycle
+path(XY) :- field(XY), head(XY).  % start at head
+path(F) :- path(S), next(S,F). % propagate values
+:- field(F), not path(F).  % every path a field
 
-#show path/2.
+apath(XY) :- field(XY), head(XY).  % start at head
+apath(F) :- apath(S), next(S,F), not apple(S). % propagate values
 
-#minimize{N:appleN(N)}.
+#show next/2.
 
-appleN(N) :- apple((X,Y)), path((X,Y),N).
+#minimize{1,XY:apath(XY)}.
+
+%appleN(N) :- apple((X,Y)), path((X,Y),N).
 
 
 
@@ -91,7 +91,7 @@ snakeI(X,L-N+1) :- endidx(L), snake(X,N).
     #external redo(num).
 
 #program consRedo(x,y,s,num).
-    :- redo(num), path((x,y),N), N < s.
+    :- redo(num), apath((x,y)).
 
 #program redoNaive(x1,y1,x2,y2, num).
     :- redo(num), not next((x1,y1),(x2,y2)). 
@@ -103,8 +103,8 @@ snakeI(X,L-N+1) :- endidx(L), snake(X,N).
 % -------------------------------- ms preground --------------------------------
 
 #program consNaive().
-    #external nextext(X1,Y1,X2,Y2) : connected((X1,Y1),(X2,Y2)).
-    :- nextext(X1,Y1,X2,Y2), not next((X1,Y1),(X2,Y2)).
+    #external snake(XY) : field(XY).
+    :- snake(XY), field(XY), apath(XY).
 
 #program consHybrid().
     #external nextext(X1,Y1,X2,Y2,L) : connected((X1,Y1),(X2,Y2)), L = 0..nn*mm-2.
