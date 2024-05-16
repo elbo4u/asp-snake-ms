@@ -36,8 +36,7 @@ def rotatepath(path):
     return path[1:]
 
 
-def pairwise(iterable):
-    # pairwise('ABCDEFG') --> AB BC CD DE EF FG
+def pairwise(iterable):    # pairwise('ABCDEFG') --> AB BC CD DE EF FG
     a, b = itertools.tee(iterable)
     next(b, None)
     return zip(a, b)
@@ -83,12 +82,17 @@ class SnakeContext: # for grounding involving python
         x = int(float(str(x))*scale)
         y = int(float(str(y))*scale)
         return String(f"{x},{y}!")
-    def largereqString(self, y):
-        y = int(str(y))
-        return String(f"≥{y}")
-    def largerString(self, y):
-        y = int(str(y))
-        return String(f">{y}")
+    
+    def interval(self, i, maxim, upper, lower):
+        y = 1.0- float(int(str(i))) / float(int(str(maxim)))
+        y = (float(int(str(upper))-int(str(lower))))*y+int(str(lower))
+        return String(str(int(y)))
+    def intervalFloat(self, i, maxim, upper, lower):
+        y = 1.0- float(str(i)) / float(str(maxim))
+        diff = int(str(upper))-int(str(lower))
+        y = y*diff+int(str(lower))
+        return String(str(float(y/100)) )
+    
     def colori(self, i):
         i = int(str(i))
         (r, g, b) = (48+i*5,  i*10 , 150 + 10*i)
@@ -100,6 +104,7 @@ class SnakeContext: # for grounding involving python
         n = int(str(n))
         n = max(5,n)
         x = (1.0-float(i-1)/float(n-1))*0.5+0.3
+        x=x*0.4+0.25
         rgb =  matplotlib.colormaps['viridis'](x)
         s = '#%02x%02x%02x'+ a
         return String(s % tuple(int(255*x) for x in rgb[:3]))
@@ -109,6 +114,7 @@ class SnakeContext: # for grounding involving python
         n = int(str(n))
         n = max(5,n)
         x = (1.0-float((float(i)+0.5)-1)/float(n-1)) *0.5+0.3
+        x=x*0.4+0.25
         rgb =  matplotlib.colormaps['viridis'](x)
         s = '#%02x%02x%02x'+ a
         return String(s % tuple(int(255*x) for x in rgb[:3]))
@@ -238,11 +244,31 @@ class snakeviz: # class to handle graphics
 
 
 class snakeC:  # snake class
-    def __init__(self,n,m,to,grafik,strategy, rotate):
-        self.n = n
-        self.m = m
-        self.to = to # timeout
-        self.grafik = grafik # draw images?
+
+    def print(self, level=2, message="", *args, **kwargs):
+        if self.verbosity >= level:
+            print(message, *args, **kwargs)
+
+    def __init__(self,args):
+        self.n = args.n
+        self.m = args.m
+        if self.m == 0:
+            self.m = self.n
+        self.to = args.to # timeout
+        self.grafik = 0 # draw images?
+        if args.gg:
+            self.grafik = 1 # draw images?
+        if args.g:
+            self.grafik = 2 # draw images?
+        self.strategy = "conservative"
+        self.rotate = args.x
+        if self.rotate not in [0, False]:
+            self.rotate = [0,0,0]
+            self.rotateOld = [0,0,0]
+        self.useheuristics = args.H
+        self.verbosity = args.v
+
+            
         self.allfields = [[i, j] for i in range(1, self.n+1) for j in range(1, self.m+1)]
         self.snakevis = snakeviz(self.n, self.m, self.grafik)
         self.path = []
@@ -266,22 +292,18 @@ class snakeC:  # snake class
         self.unsat = []
         self.skip = False
         self.encoding = "snake.lp"
-        self.strategy = strategy
-        self.rotate = rotate
-        if rotate != 0:
-            self.rotate = [0,0,0]
         self.assume = []
         self.boobytrap = 0
         self.tmpoptimize = []
         self.mixup = False
         self.mixupResolved = ""
-        self.seed = random.randint(0,999999)
+        #self.seed = random.randint(0,999999)
         self.important = []
         self.heurlist = []
-        self.useheuristics = True
         self.notgen = False
         self.timeout = False 
-        self.ctllist = ["-c", "nn="+str(n),"-c", "mm="+str(m), "0", "--seed",str(self.seed) ,"--rand-freq",str(.01), "--heuristic=Domain"]
+        self.ctllist = ["-c", "nn="+str(self.n),"-c", "mm="+str(self.m), "0", "--heuristic=Domain"]
+        
 
         if not hasattr(self, 'name'):
             self.name = ""
@@ -296,26 +318,19 @@ class snakeC:  # snake class
             self.toc = timeit.default_timer()
             self.timegroundinit += (self.toc - self.tic)
             self.timeground += (self.toc - self.tic)
-            print("ground", 0, self.timeground, (self.toc - self.tic))
-            print("initground", self.initground)
+            self.print(1,"ground", 0, self.timeground, (self.toc - self.tic))
+            self.print(2,"initground", self.initground)
 
-        print("snake_statistics", self.name, self.strategy, datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
-        print("n", self.n)
-        print("m", self.m)
-        print("to", self.to)
-        print("grafik", self.grafik)
-        print("encoding", self.encoding)
-        print("rotate", self.rotate)
-        print("seed", self.seed, flush=True)
+        self.print(0,"snake_statistics", self.name, self.strategy, datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
+        self.print(0,"n", self.n)
+        self.print(0,"m", self.m)
+        self.print(0,"to", self.to)
+        self.print(0,"grafik", self.grafik)
+        self.print(0,"encoding", self.encoding)
+        self.print(0,"rotate", self.rotate)
+        self.print(0,"verbosity", self.verbosity, flush=True)
 
-
-
-
-        # for x in self.ctl.symbolic_atoms:
-        #     if x.is_external:
-        #        print(x.symbol)
-
-        
+   
 
     def genapple(self):
         applefields = [xy for xy in self.allfields if xy not in self.snake]
@@ -324,7 +339,7 @@ class snakeC:  # snake class
         else:
             self.apple = random.choice(applefields)
             diff = abs(self.apple[0]-self.snake[0][0]) + abs(self.apple[1]-self.snake[0][1])
-            print("appleMD", len(self.snake), diff, self.apple, self.snake[0])
+            self.print(1,"appleMD", len(self.snake), diff, self.apple, self.snake[0])
             self.md += diff
             self.mdList.append(diff)
     
@@ -335,19 +350,11 @@ class snakeC:  # snake class
         s = str(model.cost)
         self.cost = int(s[1:-1])-1
         self.tmpoptimize.append(self.cost)
-        #print(model.number, model.symbols(shown=True))
+        #self.print(model.number, model.symbols(shown=True))
         if model.contains(Function("dummy",[])):
-            print("dummy", len(self.snake))
-        print("solution", len(self.snake), self.cost, (timeit.default_timer() - self.tic)*1000, flush=True)
+            self.print(2,"dummy", len(self.snake))
+        self.print(0,"solution", len(self.snake), self.cost, (timeit.default_timer() - self.tic)*1000, flush=True)
         self.path = [[0,0]]*(self.n*self.m)
-        #heurcount = 0
-        # for a in model.symbols(shown=True):
-        #     if a.name == "path" and len(a.arguments) == 2:
-        #         i = a.arguments[1].number-1
-        #         xy = a.arguments[0]
-        #         x = xy.arguments[0].number
-        #         y = xy.arguments[1].number
-        #         self.path[i] = [x,y]
 
         self.next={}
         for a in model.symbols(shown=True):
@@ -361,13 +368,8 @@ class snakeC:  # snake class
                 self.next[(x1,y1)]=(x2,y2)
         if len(self.next)>0:
             self.path = next2path(self.snake[0],self.next)
-            #print("Pathpeek", self.path)
-        # for a in model.symbols(atoms=True):
-        #     if a.name == "heur" and len(a.arguments) == 2 and a.positive :
-        #         heurcount += 1
         self.path = rotatepath(self.path)
         self.solution = len(self.snake)
-        #print("model#", model.number)
 
     def mirror(self, l):
         if self.rotate!=0:
@@ -383,13 +385,9 @@ class snakeC:  # snake class
         return l
 
     def eatapple(self):
-        #todo:fallback
-        #print(apple,path)
         if self.path[0] == self.snake[0]:
-            #self.snakevis.printsnake(self.snake, self.apple, self.path)
-            #self.snake = [self.path[0]]+self.snake[:-1]
             self.path = rotatepath(self.path)
-            print("No_new_path_generated", len(self.snake))
+            self.print(0,"No_new_path_generated", len(self.snake))
             self.important.append(len(self.snake))
             if self.mixup and self.solution<len(self.snake): #mixup issue
                 self.mixup = False
@@ -404,25 +402,17 @@ class snakeC:  # snake class
                 self.snakevis.printsnake(self.snake, self.apple, self.path, self.rotate)
                 init = False
             if self.apple not in self.path:
-                #print("starvingSnake")
                 break
             if self.path[0] in self.snake[:-1]:
-                # if self.mixup:
-                #     self.mixup = False
-                #     if len(self.snake)==self.n*self.m:
-                #         break
-
-                # if len(self.snake)<self.n*self.m:s
                     self.boobytrap = len(self.snake)
-                    print("SnakeBitItself", self.path[0], self.snake[:-1], flush=True)
+                    self.print(0,"SnakeBitItself", self.path[0], self.snake[:-1], flush=True)
                     break
             self.snake = [self.path[0]]+self.snake[:-1]
             self.path = rotatepath(self.path)
             self.appleSteps += 1
-            #print("rotate", path)
 
         self.snakevis.printsnake(self.snake, self.apple, self.path, self.rotate)
-        self.snakevis.nextiter()
+        #self.snakevis.nextiter()
         if len(self.path)>0 and not self.skip:
             self.snake = [self.path[0]]+self.snake
         self.skip = False
@@ -432,7 +422,6 @@ class snakeC:  # snake class
             snake =  copy.deepcopy(self.snake)
             path =  copy.deepcopy(self.path)
             rotate = copy.deepcopy(self.rotate)
-            #print("-----",self.snake,self.rotate )
             if snake[0][0] > (self.n >> 1):
                 rotate[0] = 1-rotate[0]
                 for i in range(len(snake)):
@@ -455,14 +444,13 @@ class snakeC:  # snake class
                     path[i][0], path[i][1] = path[i][1], path[i][0]
             self.snake =  copy.deepcopy(snake)
             self.path =  copy.deepcopy(path)
+            self.rotateOld =  copy.deepcopy(self.rotate)
             self.rotate =  copy.deepcopy(rotate)
-            #print("-----",self.snake,self.rotate)
 
             
 
 
     def notend(self):
-        #print(self.snake,self.apple)
         return len(self.snake) <= self.n*self.m and \
                 self.apple is not None and \
                 self.boobytrap == 0 and \
@@ -471,16 +459,7 @@ class snakeC:  # snake class
     
 
     def assignListDoubleBrackets(self, predicate, xy1, xy2, val=True):
-        #print("assign", Function(predicate, list2Number(xy)), val)
-        #x = list2Number(xy)
-        
-        #tmp1 = Function("",[Number(xy1[0]),Number(xy1[1])])
-        #tmp2 = Function("",[Number(xy2[0]),Number(xy2[1])])
-        #self.ctl.assign_external(Function(predicate, [tmp1,tmp2]), val) 
         self.ctl.assign_external(Function(predicate,  [Function("",list2Number(xy1)), Function("",list2Number(xy2))]), val) #assign once
-
-
-        #print(Function(predicate,  [Function("",list2Number(xy1)), Function("",list2Number(xy2))]), val)
 
     def assignSnakeHeuristic(self, val):
         if self.useheuristics:
@@ -488,7 +467,8 @@ class snakeC:  # snake class
                 if len(self.snake)>1:
                     path = self.path
                 else:
-                    path = easyhc(self.n, self.m)
+                    path = easyhc(self.n, self.m)                    
+                    self.print(2,"easypath",path)
                 for (x,y) in pairwise(path+[path[0]]):
                         self.assignListDoubleBrackets("heur", x, y, val)
                         self.heurlist.append(( x, y))
@@ -500,12 +480,9 @@ class snakeC:  # snake class
 
 
     def assignListBrackets(self, predicate, xy, val=True):
-        #print("assign", Function(predicate, list2Number(xy)), val)
-        #x = list2Number(xy)
         self.ctl.assign_external(Function(predicate,  [Function("",list2Number(xy))]), val) #assign once
 
     def assignList(self, predicate, xy, val=True):
-        #print("assign", Function(predicate, list2Number(xy)), val)
         self.ctl.assign_external(Function(predicate, list2Number(xy)), val) #assign once
 
     def assignLists(self, predicate, xy, val=True):
@@ -514,9 +491,6 @@ class snakeC:  # snake class
 
     def presolve(self):
         self.assignListBrackets("apple", self.apple, True)
-        #self.assignList("head", self.snake[0], True)
-        #if strat[self.strategy] == strat["hybrid"] and not self.name.startswith("o"):
-        #    self.assignLists("mark", self.snake, True)
         self.assignListBrackets("head", self.snake[0], True)
         self.assignSnakeHeuristic( True)
         self.tic = timeit.default_timer()
@@ -528,27 +502,25 @@ class snakeC:  # snake class
                  if timeit.default_timer() - self.tic > self.to and self.to>0.0: # if timeout reached:
                     handle.cancel()
                     self.timeout=True
-                    print("timeout", len(self.snake), self.cost, flush=True)
+                    self.print(0,"timeout", len(self.snake), self.cost, flush=True)
                     break  
             if handle.get().exhausted and not handle.get().unsatisfiable:
-                print("optimum", len(self.snake), self.cost, (timeit.default_timer() - self.tic)*1000, flush=True)
+                self.print(1,"optimum", len(self.snake), self.cost, (timeit.default_timer() - self.tic)*1000, flush=True)
                 if self.optimal == len(self.snake)-1:
                     self.optimal += 1
             if handle.get().unsatisfiable == True and len(self.snake)+1 < self.n*self.m:
-                print("UNSAT",len(self.snake),self.solution)
+                self.print(0,"UNSAT",len(self.snake),self.solution)
                 self.unsat.append((len(self.snake),self.apple,self.snake,self.path))
                 self.skip = True
 
 
     def postsolve(self):
-        print("apple", self.apple, self.n, self.m, self.cost)
-        print("snake", self.snake)
-        print("path", self.path, flush=True)
+        self.print(1,"apple", self.apple, self.n, self.m, self.cost)
+        self.print(1,"snake", self.snake)
+        self.print(1,"path", self.path, flush=True)
         self.assignListBrackets("apple", self.apple, False)
         self.assignListBrackets("head", self.snake[0], False)
         self.assignSnakeHeuristic(False)
-        #if strat[self.strategy] == strat["hybrid"] and not self.name.startswith("o"):
-        #    self.assignLists("mark", self.snake, False)
         self.ctl.cleanup
 
         self.toc = timeit.default_timer()
@@ -559,9 +531,9 @@ class snakeC:  # snake class
         self.timesolveList.append(self.timesolve)
         self.optimizeList.append(self.tmpoptimize)
         if self.solution < len(self.snake): # valid because the snake did not change yet, only the path
-            print( "notfound",len(self.snake),self.solution)
+            self.print(1, "notfound",len(self.snake),self.solution)
 
-        print( "finish_search",len(self.snake),self.cost,(self.toc - self.tic)*1000, flush=True)
+        self.print(1, "finish_search",len(self.snake),self.cost,(self.toc - self.tic)*1000, flush=True)
 
 
     def searchpath(self):
@@ -573,77 +545,14 @@ class snakeC:  # snake class
 
     
 class ms_nogood(snakeC):
-    def __init__(self,n,m,to,grafik,strategy, rotate):
+    def __init__(self,args):
         self.name = "ms_nogood"
         self.initground = [("extApples",[]) , ("extHeadsMirror",[]),  ("base",[]), ("heuristics",[]) ] #("redoBase",[])
-        if rotate==0:
+        if args.x in [0,False]:
             self.initground.append(("extHeads",[])) 
-        #if strat[strategy] in [strat["shortcut"],strat["hybrid"]]:
-        #    self.initground.append(("assume",[]))
-        super().__init__( n,m,to,grafik,strategy, rotate)
+        super().__init__( args)
 
 
-
-    # def handlesolve(self):
-    #     i = 0
-    #     while not self.timeout:
-    #         super().handlesolve()
-    #         if self.mixup == False or self.modelnr>1 or i>10 or self.timeout:
-    #             if self.timeout:
-    #                 self.mixupResolved += "t"
-    #             if self.mixup == True and self.modelnr<2:
-    #                 print("CouldNotResolveMixup", len(self.snake))
-    #                 #self.important.append(len(self.snake))
-    #                 self.mixupResolved += "!"
-    #             else:
-    #                 self.mixupResolved += "."
-    #             break
-    #         self.mixupResolved += "?"
-    #         print("MixupTryToFix", len(self.snake), i, self.mixupResolved)
-    #         self.mixup = False
-    #         self.ctl.ground([("ignore",[Number(random.randint(0,999999))])]) 
-    #         i = i+1
-
-
-
-    # def setNoPath(self, model, snake, predicate = "path", val=True): # shortcut, hybrid
-    #     l = len(snake) 
-    #     for i,xy in enumerate(snake):
-    #         if i == 0:
-    #             continue
-    #         if i == 1 and l==2:  # snake can not switch position with neck for length 2
-    #             for j in range(2,l-i+2):
-    #                 model.context.add_nogood( [(Function(predicate, [ Function("", [ Number(xy[0]),Number(xy[1])])   ,Number(j)]), val)])
-    #         else:
-    #             if l-i-1>0:     # 1 .. len-1
-    #                 for j in range(2,l-i+2-1): # head is at position 1, therefore paths starts at 2
-    #                     model.context.add_nogood( [(Function(predicate, [ Function("", [ Number(xy[0]),Number(xy[1])])   ,Number(j)]), val)])
-
-   
-    # def setHybrid(self, model, snake): # hybrid
-    #     rsnake = snake[::-1]
-    #     cl=[]
-    #     a=-6
-    #     for i in range(len(snake)-1):
-    #         s = i+1
-
-    #         #print("nogoog", "xys", rsnake[i], s, " to ", rsnake[i+1], "A ",self.mdList[-1]+1,".." ,s+2-1, end=": ")
-    #         for a in range(self.mdList[-1]+1,s+2):
-    #             # :- not next(X,Y), appleN(A), snakeI(X,S), S+2>A, snakeI(Y,S+1).
-    #             tmp =  list2Number(rsnake[i] + rsnake[i+1])   # reverse order 
-    #             xy = Function("",[tmp[0],tmp[1]])
-    #             xynext = Function("",[tmp[2],tmp[3]])
-    #             cl = []
-    #             cl.append((Function("appleN", [ Number(a)]), True))
-    #             cl.append((Function("next", [xy,xynext]), False))
-    #             #print(StringTransformer().transform(str(cl)))
-    #             model.context.add_nogood( cl)
-    #             #print(a, end=",")
-    #         #print()
-    #     #print("snake", self.snake)
-        
-    #     #print(cl)
-           
 
     def setnexts(self, model, snake, predicate = "next", val=True): # conservative
         for i in range(len(snake) - 1):
@@ -651,91 +560,30 @@ class ms_nogood(snakeC):
             tmp1 = Function("",[tmp[0],tmp[1]])
             tmp2 = Function("",[tmp[2],tmp[3]])
             model.context.add_clause( [(Function(predicate, [tmp1,tmp2]), val)])
-            #print("CHECK",len(snake),str([(Function(predicate, [tmp1,tmp2]), val)]))
+            #self.print("CHECK",len(snake),str([(Function(predicate, [tmp1,tmp2]), val)]))
 
     def mymodel(self,model):
         self.modelnr = model.number
         if model.number == 1: #model.contains(Function("dummy",[])):
             if not model.contains(Function("dummy",[])):
-                print("MIXUP dummy > 1",model.number, model.cost, len(self.snake))
+                self.print(1,"MIXUP dummy > 1",model.number, model.cost, len(self.snake))
                 self.mixup = True
                 self.mixupResolved += "x"
-            # if strat[self.strategy] in [strat["shortcut"],strat["hybrid"]]:
-            #     self.setNoPath( model, self.snake, "path", True)
-            # if strat[self.strategy] == strat["hybrid"]:
-            #     self.setHybrid( model, self.snake)
-            # if strat[self.strategy] == strat["conservative"]:
-            #     #print("ENTER")
             self.setnexts( model, self.snake, "next", True)
         else:
             if model.contains(Function("dummy",[])):
-                #self.mixupResolved += ":"
-                print("MIXUP 1, not dummy",model.number,model.cost,  len(self.snake))
+                self.print(1,"MIXUP 1, not dummy",model.number,model.cost,  len(self.snake))
         super().mymodel( model)
 
 class ms_assume(snakeC):
-    def __init__(self,n,m,to,grafik,strategy, rotate):
+    def __init__(self,args):
         self.name = "ms_assume"
         self.initground = [("extApples",[]) , ("extHeadsMirror",[]), ("base",[]), ("heuristics",[]) ]
-        if rotate==0:
+        
+        if args.x in [0,False]:
             self.initground.append(("extHeads",[])) 
-        if strat[strategy] == strat["hybrid"]:
-            self.initground.append(("assume",[]))
-        if strat[strategy] == strat["hybrid"]:
-            self.initground.append(("assumeMark",[]))
+        super().__init__( args)
 
-        super().__init__( n,m,to,grafik,strategy, rotate)
-
-    # def assumeSmaller(self, snake, predicate = "smaller", val=True):
-    #     assumption = []
-    #     l = len(snake) 
-    #     for i,xy in enumerate(snake):
-    #         if i == 0:
-    #             continue
-    #         if i == 1 and l==2:
-    #             #print("assume", predicate,[Number(xy[0]),Number(xy[1]),Number(l-i)], val)
-    #             assumption.append((
-    #                 Function(predicate, [
-    #                          Function("",[Number(xy[0]),Number(xy[1])]),
-    #                          Number(l-i+2)
-    #                          ]), val))
-    #         else:
-    #             if l-i-1>0:
-    #                 #print("assign", predicate,[Number(xy[0]),Number(xy[1]),Number(l-i-1)], val)
-    #                 assumption.append((
-    #                     Function(predicate, [
-    #                              Function("",[Number(xy[0]),Number(xy[1])]),
-    #                              Number(l-i-1+2)
-    #                              ]), val))
-    #     return assumption
-    
-    # def assumeApath(self, snake, predicate = "apath", val=False):
-    #     # assumption = []
-    #     # for i in range(len(snake)-1):
-    #     #         assumption.append((
-    #     #             Function(predicate, [
-    #     #                      Function("",[Number(snake[i+1][0]),Number(snake[i+1][1])]),
-    #     #                      Function("",[Number(snake[i  ][0]),Number(snake[i  ][1])])            
-    #     #                      ]), val))
-    #     # return assumption
-    
-
-    #     assumption = []
-    #     for i,xy in enumerate(snake[1:]):
-    #             assumption.append((
-    #                 Function(predicate, [
-    #                          Function("",[Number(xy[0]),Number(xy[1])])]), val))
-    #     return assumption
-    
-    # def assumeSnake(self, snake, predicate = "snake", val=True):
-    #     assumption = []
-    #     l = len(snake) 
-    #     for i,xy in enumerate(snake):
-    #         assumption.append((Function(predicate, [
-    #             Function("",[Number(xy[0]),Number(xy[1])]),
-    #             Number(l-i)
-    #             ]), val))
-    #     return assumption
     
     def assumeNext(self, snake, predicate = "next", val=True):
         assumption = []
@@ -747,139 +595,46 @@ class ms_assume(snakeC):
         return assumption
 
     def presolve(self):
-        # if strat[self.strategy] == strat["shortcut"]:
-        #     self.assume = self.assumeSmaller(self.snake, "smaller", False)
-        # if strat[self.strategy] == strat["hybrid"]:
-        #     self.assume = self.assumeSmaller(self.snake, "smaller", False)
-        #     self.assume.extend(self.assumeSnake(self.snake, "snake", True))
-        # if strat[self.strategy] == strat["conservative"]:
         self.assume = self.assumeNext(self.snake, "next", True)
-        #print("assume",self.assume)
         super().presolve()
 
 class ms_preground(snakeC):
-    def __init__(self,n,m,to,grafik,strategy, rotate):
+    def __init__(self,args):
         self.name = "ms_preground"
         self.initground = [("extApples",[]) , ("extHeadsMirror",[]), ("base",[]), ("heuristics",[]) ] 
-        if rotate==0:
+        
+        if args.x in [0,False]:
             self.initground.append(("extHeads",[])) 
-        # if strat[strategy] == strat["shortcut"]:
-        #     self.initground.append(("consPre",[]))
-        # if strat[strategy] == strat["hybrid"]:
-        #     self.initground.append(("consPre",[]))
-        #     self.initground.append(("consHybrid",[]))
-        # if strat[strategy] == strat["conservative"]:
         self.initground.append(("consNaive",[]))
-        super().__init__( n,m,to,grafik,strategy, rotate)
+        super().__init__( args)
 
-    # def assignExts(self, snake, predicate = "smaller", val=True):
-    #     l = len(snake) 
-    #     for i,xy in enumerate(snake):
-    #         if i == 0:
-    #             continue
-    #         if i == 1 and l==2:
-    #             #print("assign", predicate,[Number(xy[0]),Number(xy[1]),Number(l-i)], val)
-    #             self.ctl.assign_external(
-    #                 Function(predicate, [
-    #                     Function("", [Number(xy[0]) , Number(xy[1])]),
-    #                     Number(l-i+2)
-    #                     ]), val)
-    #             #print("   smaller", xy[0], xy[1], l-i+2, val)
-    #         else:
-    #             if l-i-1>0:
-    #                 #print("assign", predicate,[Number(xy[0]),Number(xy[1]),Number(l-i-1)], val)
-    #                 self.ctl.assign_external(
-    #                     Function(predicate, [
-    #                         Function("",[Number(xy[0]),Number(xy[1])]),
-    #                         Number(l-i-1+2)
-    #                         ]), val)
-    #                 #print("   smaller", xy[0], xy[1], l-i-1+2, val)
-
-    # def assignExtsSnake(self, snake, predicate = "snakeInv", val=True):
-    #     l = len(snake) 
-    #     for i,xy in enumerate(snake):
-    #         #print("assign",predicate, [Number(xy[0]),Number(xy[1]),Number(l-i)],val)
-    #         self.ctl.assign_external(Function(predicate, [Number(xy[0]),Number(xy[1]),Number(l-i)]), val)
-    #         #print("   snakeInv", xy[0], xy[1], l-i)
             
     def assignNextExts(self, snake, predicate = "nextext", val=True):
         for i in range(len(snake) - 1):
             tmp =  list2Number(snake[i+1] + snake[i])   # reverse order 
             tmp1 = Function("",[tmp[0],tmp[1]])
             tmp2 = Function("",[tmp[2],tmp[3]])
-            #print("set", Function(predicate, list2Number(tmp)), val)
             self.ctl.assign_external(Function(predicate, [tmp1,tmp2]), val)
-            #print("   ", predicate, Function(predicate, [tmp1,tmp2]), val)
 
-    # def assignNextSnake(self, snake, predicate = "snake", val=True):
-    #     for x in snake[1:]:
-    #         self.ctl.assign_external(Function(predicate, [Function("",list2Number(x))]), val)
-
-    #         #print("   nextext", list2Number(tmp), val)
-    #         #print("HERE ",x, str(Function(predicate, [Function("",list2Number(x))])))
-
-    # def assignHybrid(self, snake, predicate = "nextext", val=True):
-    #     for i in range(len(snake) - 1):
-    #         tmp = snake[i+1] + snake[i] + [len(snake)-(i+1)] # reverse order
-    #         #print("set", Function(predicate, list2Number(tmp)), val)
-    #         self.ctl.assign_external(Function(predicate, list2Number(tmp)), val)
-    #         #print("   nextextLen", list2Number(tmp), val)
         
 
     def presolve(self):
-    #     if strat[self.strategy] in [strat["shortcut"]]:
-    #         self.assignExts(self.snake, "smaller", True)
-    #     if strat[self.strategy] == strat["hybrid"]:
-    #     #    self.assignExtsSnake(self.snake, "snakeInv", True)
-    #         self.assignHybrid(self.snake, "nextext", True)
-    #         self.assignExts(self.snake, "smaller", True)
-    #     if strat[self.strategy] == strat["conservative"]:
-    #         #self.assignNextSnake(self.snake, "snake", True)
         self.assignNextExts(self.snake, "prenext", True)
         super().presolve()
         
     def postsolve(self):
-        # if strat[self.strategy] in [strat["shortcut"]]:
-        #     self.assignExts(self.snake, "smaller", False)
-        # if strat[self.strategy] == strat["hybrid"]:
-        #     #self.assignExtsSnake(self.snake, "snakeInv", False)
-        #     self.assignHybrid(self.snake, "nextext", False)
-        #     self.assignExts(self.snake, "smaller", False)
-        # if strat[self.strategy] == strat["conservative"]:
-        #     #self.assignNextSnake(self.snake, "snake", False)
         self.assignNextExts(self.snake, "prenext", False)
         super().postsolve()
         
 class ms_redo(snakeC):
-    def __init__(self,n,m,to,grafik,strategy, rotate):
+    def __init__(self,args):
         self.name = "ms_redo"
         self.initground = [("extApples",[]) , ("extHeadsMirror",[]), ("base",[]), ("heuristics",[]) ] 
-        if rotate==0:
-            self.initground.append(("extHeads",[])) 
-        super().__init__( n,m,to,grafik,strategy, rotate)
-
-    # def snake2cons(self, snake, predicate = "consRedo"):
-    #     toground =[]
-    #     l = len(snake) 
-    #     for i,xy in enumerate(snake):
-    #         if i == 0:
-    #             continue
-    #         if i == 1 and l==2:
-    #             toground.append((predicate,[Number(xy[0]),Number(xy[1]),Number(l-i+2),Number(l)]))
-    #         else:
-    #             if l-i-1>0:
-    #                 toground.append((predicate,[Number(xy[0]),Number(xy[1]),Number(l-i-1+2),Number(l)]))
-    #     return toground
         
-
-    # def snake2mark(self, snake, predicate = "redoHybrid"):
-    #     toground =[]
-    #     l = len(snake) 
-    #     isnake = snake[::-1]
-    #     for i,xy in enumerate(isnake[:-1]):
-    #         toground.append((predicate,[Number(xy[0]),Number(xy[1]),Number(isnake[i+1][0]),Number(isnake[i+1][1]),Number(i+1),Number(l)]))
-    #     return toground
-    
+        if args.x in [0,False]:
+            self.initground.append(("extHeads",[])) 
+        super().__init__( args)
+                         
     def snake2next(self, snake, predicate = "consRedo"):
         toground =[]
         l = len(snake)
@@ -890,20 +645,13 @@ class ms_redo(snakeC):
 
     def presolve(self):
         toground = [("extRedo",[Number(len(self.snake))])]
-        # if strat[self.strategy]  == strat["shortcut"]:
-        #     toground.extend(self.snake2cons(self.snake, "consRedo"))
-        # if strat[self.strategy] == strat["hybrid"]:
-        #     toground.extend(self.snake2cons(self.snake, "consRedo"))
-        #     toground.extend(self.snake2mark(self.snake, "redoHybrid"))
-        # if strat[self.strategy] == strat["conservative"]:
         toground.extend(self.snake2next(self.snake, "redoNaive"))
         self.tic = timeit.default_timer()
         self.ctl.ground(toground)
         self.toc = timeit.default_timer()
         self.timeground += (self.toc - self.tic)
 
-        print("ground", len(self.snake), self.timeground, (self.toc - self.tic))
-        #print("ground", toground)
+        self.print(2,"ground", len(self.snake), self.timeground, (self.toc - self.tic))
         self.assignList("redo", [len(self.snake)], True)
         super().presolve()
         
@@ -912,10 +660,10 @@ class ms_redo(snakeC):
         super().postsolve()
 
 class oneshot(snakeC):
-    def __init__(self,n,m,to,grafik,strategy, rotate):
+    def __init__(self,args):
         self.name = "oneshot"
         self.initground = []  
-        super().__init__( n,m,to,grafik,strategy, rotate)
+        super().__init__( args)
 
 
     def presolve(self):
@@ -924,23 +672,15 @@ class oneshot(snakeC):
         
         toground = [("base",[]), ("heuristics",[])  ]  
         toground.append(apple2symbol(self.apple))
-        toground.extend(snake2symbol(self.snake))
-        # if strat[self.strategy] == strat["shortcut"]:
-        #     toground.append(("osShortcut",[]))
-        # if strat[self.strategy] == strat["hybrid"]:
-        #     toground.append(("markSnake",[]))
-        #     toground.append(("osShortcut",[]))
-        # if strat[self.strategy] == strat["conservative"]:
+        toground.extend(snake2symbol(self.snake))        
         toground.append(("osNaive",[]))
 
-
-        #print(self.strategy, strat[self.strategy], toground)
         self.tic = timeit.default_timer()
         self.ctl.ground(toground)
         self.assignSnakeHeuristic( True)
         self.toc = timeit.default_timer()
         self.timeground += (self.toc - self.tic)
-        print("ground", len(self.snake), self.timeground, (self.toc - self.tic))
+        self.print(2,"ground", len(self.snake), self.timeground, (self.toc - self.tic))
         self.tic = timeit.default_timer()
              
 
@@ -951,6 +691,7 @@ def main():
     classmap = {
 			'os':oneshot,
 			'redo':ms_redo,
+			'adhoc':ms_redo,
 			'preground':ms_preground,
 			'assume':ms_assume,
 			'nogood':ms_nogood,
@@ -971,71 +712,21 @@ def main():
 			'5':ms_nogood
 			}
 
-    to = 10.0 # seconds
-    n=6
-    m=6
-    grafik = False
-    approach = "redo"
-    strategy = "conservative" # conservative, shortcut, hybrid
-    rotate = 0
-    printhelp = f"""
-Script to let the computer play snakes! in clingo! using python! and multi-shot!
-How to use this script:
-python snakes.py M N A S G T
-M, N: dimensions of grid, default {n} and {m}
-A: approach, default {approach};    {", ".join(classmap.keys()) }
-S: strategy, default {strategy};    {", ".join(strat.keys())}
-G: draw grafics, 0 for no (default), 1 for yes    
-T: timeout in seconds, default {to} 
-example:   python snakes.py 8 8 redo hybrid 1
-"""
     parser = argparse.ArgumentParser(description='Script to let the computer play snakes! in clingo! using python! and multi-shot!')
     parser.add_argument('-n', help='dimension 1 of the grid', type=int, default=6)
     parser.add_argument('-m', help='dimension 2 of the grid', type=int, default=0)
-    parser.add_argument('-to', '--timeout', help='timeout in seconds', type=int, default=10)
-    parser.add_argument('-a', help='approaches', default='os', choices=['os','redo','preground','assume','nogood','oneshot','ms_redo','ms_preground','ms_assume','ms_nogood','o','r','p','a','n','1','2','3','4','5'],)
-    parser.add_argument('-g', help='create minimal graphics', type=bool, default=False)
-    parser.add_argument('-gg', help='create extensive graphics', type=bool, default=False)
-    parser.add_argument('-x', '--mirror', help='mirror the field', type=bool, default=True)
-    parser.add_argument('-H', '--heuristic', help='use heuristics', type=bool, default=True)
-    #args = vars(parser.parse_args())
-        
-    if len(sys.argv) == 1 or  len(sys.argv) > 1 and sys.argv[1] in ["h", "-h", "--h", "--help"] :
-        print(printhelp)
-        #return
-        n   =  6 # n
-        m   =  6 # m
-        approach  =  "1" # which method
-        strategy  =  "1" # which logic program
-        grafik  =  0 # draw pictures + animation
-        to  =  5 # timeout
-        rotate  =  1 # rotate?
+    parser.add_argument('-to',  help='timeout in seconds', type=int, default=10)
+    parser.add_argument('-a', help='approaches', default='os', choices=['os','redo','adhoc','preground','assume','nogood','oneshot','ms_redo','ms_preground','ms_assume','ms_nogood','o','r','p','a','n','1','2','3','4','5'],)
+    parser.add_argument('-g', help='create minimal graphics', action='store_true', default=False)
+    parser.add_argument('-gg', help='create extensive graphics', action='store_true', default=False)
+    parser.add_argument('-x', action='store_false', default=True, help=argparse.SUPPRESS)
+    parser.add_argument('-v', help='output activitiy (0,1,2)', type=int, default=2)
+    parser.add_argument('-H', help='disable heuristics', action='store_false', default=True) 
 
-    if len(sys.argv) > 1 and int(sys.argv[1])>1: n   =  int(sys.argv[1]) # n
-    if len(sys.argv) > 2 and int(sys.argv[2])>1: m   =  int(sys.argv[2]) # m
-    if len(sys.argv) > 3 and len(sys.argv[3])>0: approach  =  sys.argv[3][0].lower() # which method
-    if len(sys.argv) > 4 and len(sys.argv[4])>0: strategy  =  sys.argv[4][0].lower() # which logic program
-    if len(sys.argv) > 5: grafik  =  int(sys.argv[5]) # draw pictures + animation
-    if len(sys.argv) > 6: to  =  float(sys.argv[6]) # timeout
-    if len(sys.argv) > 7: rotate  =  int(sys.argv[7]) # rotation
-
-
-    if approach not in classmap:
-        print("choose a valid mode (3rd argument) - was ", approach, ", should be one of", ", ".join([key for key in classmap.keys()]))
-        print(printhelp)
-        return
-    if strategy not in strat:
-        print("choose a valid stragegy (4th argument) - was", strategy, ", should be one of", ", ".join([key for key in strat.keys()]))
-        print(printhelp)
-        return
-    for s in ["conservative","shortcut","hybrid"]:
-        if strat[strategy] == strat[s]: 
-            strategy=s
+    args =  parser.parse_args()
     
-    mysnake = classmap[approach](n,m,to,grafik,strategy, rotate)
-    #n = ctl.get_const("n").number
-
-    #mysnake.snakevis.printsnake(mysnake.snake,None,[])
+    mysnake = classmap[args.a](args)
+    
     while mysnake.notend():
         mysnake.snakevis.printsnake(mysnake.snake,None,mysnake.path, mysnake.rotate)
         mysnake.genapple()
@@ -1048,22 +739,21 @@ example:   python snakes.py 8 8 redo hybrid 1
             break
         mysnake.eatapple() 
 
-    #mysnake.eatapple() 
 
-    print("premature",  len(mysnake.unsat), mysnake.unsat)
+    mysnake.print(2,"premature",  len(mysnake.unsat), mysnake.unsat)
     print("nmto", mysnake.n, mysnake.m, mysnake.to)
     print("steplist",mysnake.stepList)
-    print("mdList",mysnake.mdList)
-    print("optimizeList",mysnake.optimizeList)
-    print("timegroundList",mysnake.timegroundList)
-    print("timesolveList",mysnake.timesolveList)
-    print("steps", mysnake.steps, mysnake.md, float( mysnake.steps)/len(mysnake.snake), float( mysnake.md)/len(mysnake.snake), mysnake.m*mysnake.n/2)
+    mysnake.print(2,"mdList",mysnake.mdList)
+    mysnake.print(2,"optimizeList",mysnake.optimizeList)
+    mysnake.print(2,"timegroundList",mysnake.timegroundList)
+    mysnake.print(2,"timesolveList",mysnake.timesolveList)
+    mysnake.print(2,"steps", mysnake.steps, mysnake.md, float( mysnake.steps)/len(mysnake.snake), float( mysnake.md)/len(mysnake.snake), mysnake.m*mysnake.n/2)
     print("applesteps", mysnake.appleSteps)
     print("ttotal", (timeit.default_timer() - tstart))
     print("tground", mysnake.timeground, mysnake.timegroundinit)
     print("tsolve", mysnake.timesolve)
     print("modus", mysnake.name, mysnake.strategy)
-    print("finished", n*m, len(mysnake.snake), mysnake.optimal+1)
+    print("finished", mysnake.n*mysnake.m, len(mysnake.snake), mysnake.optimal+1)
     if len(mysnake.mixupResolved) > 0:
         print("mixupResolved", mysnake.mixupResolved)
     if len(mysnake.important)>0:
