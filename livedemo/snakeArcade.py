@@ -71,20 +71,53 @@ hstep[(10,50)] =  [9.0, 6.5, 7.0, 7.0, 8.0, 8.0, 7.5, 8.0, 8.0, 9.0, 10.0, 8.0, 
 hstep[(10,75)] =  [11.0, 9.0, 10.0, 9.25, 11.0, 10.0, 12.0, 11.0, 13.0, 13.0, 21.0, 14.0, 16.0, 18.25, 23.0, 25.0, 15.5, 17.25, 15.0, 16.0, 23.25, 22.0, 26.25, 20.25, 20.25, 20.0, 23.25, 26.5, 18.25, 19.25, 18.25, 21.25, 25.0, 21.25, 21.25, 22.5, 22.25, 28.5, 22.5, 20.25, 22.25, 21.25, 29.25, 24.25, 25.0, 24.0, 21.25, 25.0, 21.25, 25.25, 29.0, 21.25, 29.0, 21.25, 21.75, 20.0, 23.0, 22.25, 24.25, 18.25, 21.0, 26.25, 19.0, 22.0, 16.25, 23.0, 19.0, 22.0, 21.0, 17.0, 18.25, 17.0, 17.0, 20.0, 17.0, 17.0, 16.0, 15.5, 15.0, 14.0, 12.25, 13.0, 11.0, 11.0, 10.25, 11.0, 9.0, 9.0, 8.0, 8.0, 7.0, 7.0, 6.0, 5.0, 4.0, 3.0, 3.0, 2.0, 1.0]
 hstep[(10,90)] =  [14.0, 11.0, 11.0, 16.0, 15.200000000000017, 13.0, 22.0, 21.10000000000001, 20.200000000000017, 19.300000000000026, 33.20000000000002, 26.60000000000005, 24.10000000000001, 31.0, 34.70000000000006, 42.300000000000026, 30.10000000000001, 32.400000000000034, 37.70000000000006, 30.300000000000026, 36.20000000000002, 49.20000000000002, 39.10000000000001, 34.0, 36.10000000000001, 39.20000000000002, 37.20000000000002, 41.20000000000002, 26.900000000000077, 49.20000000000002, 39.20000000000002, 47.300000000000026, 41.20000000000002, 32.20000000000002, 31.300000000000026, 43.0, 46.0, 52.10000000000001, 48.20000000000002, 42.10000000000001, 46.0, 36.20000000000002, 44.0, 37.70000000000006, 48.10000000000001, 42.10000000000001, 38.20000000000002, 35.10000000000001, 33.10000000000001, 43.0, 39.300000000000026, 38.0, 43.0, 33.20000000000002, 36.300000000000026, 36.0, 35.0, 31.10000000000001, 36.10000000000001, 31.10000000000001, 30.0, 34.10000000000001, 32.10000000000001, 30.0, 28.10000000000001, 31.0, 30.0, 29.10000000000001, 26.10000000000001, 25.10000000000001, 26.10000000000001, 24.0, 25.0, 23.0, 22.10000000000001, 22.10000000000001, 19.10000000000001, 20.0, 19.0, 17.0, 17.0, 16.0, 15.0, 14.0, 14.0, 13.100000000000009, 11.0, 11.0, 10.0, 9.0, 9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0]
 
+check = True
 
+def display_plot():
+    root = Tk()
+    root.title("Statistics Viewer")
+    
+    img = Image.open("stats.png")
+    photo = ImageTk.PhotoImage(img)
+    label = Label(root, image=photo)
+    label.image = photo  # Keep a reference!
+    label.pack()
+    
+    def update_image():
+        global check
+        while True:
+            if check:
+                img = Image.open("stats.png")
+                photo = ImageTk.PhotoImage(img)
+                label.config(image=photo)
+                label.image = photo
+                check = False
+            time.sleep(0.25)  # Refresh every second
+            #print(len(snake))
+    
+    threading.Thread(target=update_image, daemon=True).start()
+    
+    root.mainloop()
+
+threading.Thread(target=display_plot, daemon=True).start()
+time.sleep(0.25)
 
 #font_path = "Downloads/NotoColorEmoji-Regular.ttf"  # Replace with the path to your font
 # Initialize pygame
 pygame.init()
 # Set up display
 
+image = pygame.image.load("stats.png")
+iw,ih = image.get_size()
+
 n, m = 4, 4
 width, height = 640, 480
 width, height = 2000, 2000
-width, height = 800, 800; n, m = 4, 4
+width, height = 1046, 1046; n, m = 4, 4
 cell_size = width/n
 screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
 pygame.display.set_caption('Snakes - Logic is Everywhere')
+os.environ["SDL_VIDEO_WINDOW_POS"] = "0,200"
 
 # Colors
 black = (0, 0, 0)
@@ -164,25 +197,30 @@ def visualize_stats( save = False):
     #print(tt)
 
 
-    plt.figure(figsize=(14, 10))
-    plt.subplot(2, 2, 1)
+    plt.figure(figsize=(7.5, 10.5))
+    plt.subplot(3, 1, 1)
 
     def calculate_percentiles(data, percentiles):
         data_no_zeros = np.where(data == 0, np.nan, data)
         return [np.nanpercentile(data_no_zeros, p, axis=0) for p in percentiles]
     
     if matching_stats:
-        percentiles = [10, 25, 50, 75, 90]
+        percentiles = [10.0, 25.0, 50.0, 75.0, 90.0]
         p10s, p25s, p50s, p75s, p90s = calculate_percentiles(hss, percentiles)
         p10t, p25t, p50t, p75t, p90t = calculate_percentiles(htt, percentiles)
 
         ps = calculate_percentage(hl,len(snake))
         if len(snake) < n*m:
-            plt.suptitle(f'Snake Statistik für Länge {len(snake)} (Top {int(100-ps-0.49)}%)', fontsize=24)
+            plt.suptitle(f'Statistik für Länge {len(snake)} (Top {int(100-ps-0.49)}%)', fontsize=16)
         else:
-            ps = calculate_percentage(hs,sum(times))
+            ps = calculate_percentage(hs,sum(steps))
             pt = calculate_percentage(ht,sum(times))
-            plt.suptitle(f'Snake Statistik für Zeit {int(sum(times))}s (Top {int(100-ps-0.49)}%, kürzeste {int(ps+0.49)}%, schnellste {int(pt+0.49)}%)', fontsize=24)
+            #print(ps, hs, sum(steps))
+            #print(pt, ht, sum(times), times[:][-1])
+            #pt = calculate_percentage(ht,sum(times))
+            #plt.suptitle(f'Statistik für Zeit {int(sum(times))}s (Top {int(100-ps-0.49)}%, kürzeste {int(ps+0.49)}%, schnellste {int(pt+0.49)}%)', fontsize=24)
+            #plt.suptitle(f'Statistik für Zeit {int(sum(times))}s, \nkürzeste {int(ps+0.49)}%, schnellste {int(pt+0.49)}%', fontsize=16)
+            plt.suptitle(f'Statistik für Zeit {int(sum(times))}s', fontsize=16)
 
         # Plot ss
         plt.fill_between(range(len(p10s)), p10s, p90s, color='blue', alpha=0.1, label='10%-90% Perzentile')
@@ -194,36 +232,39 @@ def visualize_stats( save = False):
         plt.legend()
 
         # Plot t
-        plt.subplot(2, 2, 2)
-        plt.title('Akkumulierte Zeit pro Iteration')
+        plt.subplot(3, 1, 3)
+        plt.title('Akkumulierte Zeit pro Iteration in s')
         plt.fill_between(range(len(p10t)), p10t, p90t, color='green', alpha=0.1, label='10%-90% Perzentile')
         plt.fill_between(range(len(p25t)), p25t, p75t, color='green', alpha=0.3, label='25%-75% Perzentile')
+        plt.fill_between(range(len(htime[(n,10)])+1), [np.nan]+htime[(n,10)], [np.nan]+htime[(n,90)], color='orange', alpha=0.1, label='10%-90% Perzentile')
+        plt.fill_between(range(len(htime[(n,25)])+1), [np.nan]+htime[(n,25)], [np.nan]+htime[(n,75)], color='orange', alpha=0.3, label='25%-75% Perzentile')
         plt.plot(p50t, color='green', linestyle='--', label='akkumulierte Zeit im Mittel')
+        plt.plot([np.nan]+htime[(n,50)], color='orange', linestyle='--', label='Computer')
         plt.plot(range(0,len(snake)),times[0:(len(snake))], color='black', label='Aktuelles Spiel')
         plt.grid()
         plt.legend()
 
 
         # Plot t
-        plt.subplot(2, 2, 3)
+        plt.subplot(3, 1, 2)
         plt.title('Anzahl Schritte Computer')
-        plt.fill_between(range(len(hstep[(n,10)])+1), [np.NaN]+hstep[(n,10)], [np.NaN]+hstep[(n,90)], color='red', alpha=0.1, label='10%-90% Perzentile')
-        plt.fill_between(range(len(hstep[(n,25)])+1), [np.NaN]+hstep[(n,25)], [np.NaN]+hstep[(n,75)], color='red', alpha=0.3, label='25%-75% Perzentile')
+        plt.fill_between(range(len(hstep[(n,10)])+1), [np.nan]+hstep[(n,10)], [np.nan]+hstep[(n,90)], color='red', alpha=0.1, label='10%-90% Perzentile')
+        plt.fill_between(range(len(hstep[(n,25)])+1), [np.nan]+hstep[(n,25)], [np.nan]+hstep[(n,75)], color='red', alpha=0.3, label='25%-75% Perzentile')
 
-        plt.plot([np.NaN]+hstep[(n,50)], color='red', linestyle='--', label='Anzahl Schritte im Mittel')
+        plt.plot([np.nan]+hstep[(n,50)], color='red', linestyle='--', label='Anzahl Schritte im Mittel')
         plt.plot(range(1,len(snake)),steps[1:(len(snake))], color='black', label='Aktuelles Spiel')
         plt.grid()
         plt.legend()
         # Plot t
 
-        plt.subplot(2, 2, 4)
-        plt.title('Zeit Computer')
-        plt.fill_between(range(len(htime[(n,10)])+1), [np.NaN]+htime[(n,10)], [np.NaN]+htime[(n,90)], color='orange', alpha=0.1, label='10%-90% Perzentile')
-        plt.fill_between(range(len(htime[(n,25)])+1), [np.NaN]+htime[(n,25)], [np.NaN]+htime[(n,75)], color='orange', alpha=0.3, label='25%-75% Perzentile')
-        plt.plot([np.NaN]+htime[(n,50)], color='orange', linestyle='--', label='akkumulierte Zeit im Mittel')
-        plt.plot(range(0,len(snake)),times[0:(len(snake))], color='black', label='Aktuelles Spiel')
-        plt.grid()
-        plt.legend()
+#        plt.subplot(1, 3, 4)
+#        plt.title('Zeit Computer')
+#        plt.fill_between(range(len(htime[(n,10)])+1), [np.nan]+htime[(n,10)], [np.nan]+htime[(n,90)], color='orange', alpha=0.1, label='10%-90% Perzentile')
+#        plt.fill_between(range(len(htime[(n,25)])+1), [np.nan]+htime[(n,25)], [np.nan]+htime[(n,75)], color='orange', alpha=0.3, label='25%-75% Perzentile')
+#        plt.plot([np.nan]+htime[(n,50)], color='orange', linestyle='--', label='akkumulierte Zeit im Mittel')
+#        plt.plot(range(0,len(snake)),times[0:(len(snake))], color='black', label='Aktuelles Spiel')
+#        plt.grid()
+#        plt.legend()
 
         plt.tight_layout()
         plt.savefig("stats.png")
@@ -236,8 +277,8 @@ def visualize_stats( save = False):
 
 def load_svg(size):    
     # Convert SVG to PNG and load it
-    cairosvg.svg2png(url="/home/elisa/Dokumente/shared/snake/output/eyes.svg", write_to=f"temp_eyes_{int(size)}.png", output_width=size, output_height=size)
-    cairosvg.svg2png(url="/home/elisa/Dokumente/shared/snake/output/apple.svg", write_to=f"temp_apple_{int(size)}.png", output_width=size, output_height=size)
+    cairosvg.svg2png(url="eyes.svg", write_to=f"temp_eyes_{int(size)}.png", output_width=size, output_height=size)
+    cairosvg.svg2png(url="apple.svg", write_to=f"temp_apple_{int(size)}.png", output_width=size, output_height=size)
 
 def draw_svg(typ, position, size):
     x, y = position
@@ -268,32 +309,6 @@ def game_over():
     #     time.sleep(0.1)
     start_menu()
 
-def display_plot():
-    root = Tk()
-    root.title("Statistics Viewer")
-    
-    img = Image.open("stats.png")
-    photo = ImageTk.PhotoImage(img)
-    label = Label(root, image=photo)
-    label.image = photo  # Keep a reference!
-    label.pack()
-    
-    def update_image():
-        global check
-        while True:
-            if check:
-                time.sleep(0.1)  # Refresh every second
-                img = Image.open("stats.png")
-                photo = ImageTk.PhotoImage(img)
-                label.config(image=photo)
-                label.image = photo
-                check = False
-            time.sleep(0.5)  # Refresh every second
-            #print(len(snake))
-    
-    threading.Thread(target=update_image, daemon=True).start()
-    
-    root.mainloop()
 
 def save_screenshot(screen):
     path = "/home/elisa/Dokumente/shared/snake/output/"
@@ -438,6 +453,7 @@ def main_game():
                 cell_size = min(width/n,height/m)
                 load_svg(cell_size)
                 #resize = True
+                print("resize",width,height)		
             
 
         # Move the snake only if a key is pressed
@@ -542,6 +558,9 @@ def start_menu():
     menu.add.text_input('Width: ', default=str(m), onchange=set_width)
     menu.add.text_input('Height: ', default=str(n), onchange=set_height)
     menu.add.button('Quit', pygame_menu.events.EXIT)
+    
+    #imw = menu.add.image(image_path="stats.png")
+    #imw.translate(width,0)
     while True:
             events = pygame.event.get()
             
@@ -592,6 +611,6 @@ def start_game():
     main_game()
 
 # Main
+#threading.Thread(target=display_plot, daemon=True).start()
 screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
-threading.Thread(target=display_plot, daemon=True).start()
 start_menu()
